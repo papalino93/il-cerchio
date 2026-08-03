@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Il Cerchio</title>
+<meta name="theme-color" content="#F3F0E9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15181A" media="(prefers-color-scheme: dark)">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ==========================================================================
+   IL CERCHIO — v3
+   Compositore (co-pilota) → link WhatsApp → accettazione → ritorno nel gruppo.
+   Nessun backend: lo stato del compito vive nel gruppo WhatsApp.
+
+     ?t=<payload>     la pagina del compito   (formato primario)
+     #/t/<payload>    stesso, retrocompatibile
+
+   Correzioni v3 rispetto a v2:
+     · URL: niente più "nullsrcdoc". Origine validata, https forzato,
+       avviso esplicito e invio bloccato finché l'indirizzo non è valido.
+     · [hidden] ora vince sempre: il blocco dettagli e le checklist
+       venivano mostrati anche quando dovevano restare nascosti.
+     · payload compatto (array anziché oggetto): link 25% più corto.
+     · lista operativa e "parole sue" separate: erano finite nello
+       stesso riquadro, con due significati diversi.
+   ========================================================================== */
+
+:root{
+  --paper:      #F3F0E9;
+  --card:       #FFFDF8;
+  --sand:       #EAE5D9;
+  --line:       #E2DCCF;
+  --line-firm:  #D6CFBE;
+  --ink:        #1F2420;
+  --ink-soft:   #5F5C4E;
+  --ink-dim:    #77725F;
+  --green:      #1C3A2E;
+  --green-hi:   #24493A;
+  --on-green:   #FBFAF6;
+  --warn-bg:    #F6EEDC;
+  --warn-line:  #C9A961;
+
+  --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans:"Work Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --spring: cubic-bezier(.22,.9,.3,1);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#15181A; --card:#1E2225; --sand:#252A2C;
+    --line:#333A3C; --line-firm:#454C4E;
+    --ink:#F1EFE9; --ink-soft:#B3B8B4; --ink-dim:#9AA09B;
+    --green:#5FA894; --green-hi:#6FBAA5; --on-green:#0E1412;
+    --warn-bg:#2C2718; --warn-line:#9C8340;
+  }
+}
+@media (prefers-contrast: more){
+  :root{ --ink-soft:#3A3A32; --ink-dim:#43433A; --line:#9C968A; }
+}
+
+*,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+/* FIX v3 — [hidden] deve battere qualsiasi classe con display.
+   Senza questo, .detail/.checklist/.count restavano visibili. */
+[hidden]{ display:none !important; }
+
+html{ -webkit-text-size-adjust:100%; }
+body{
+  min-height:100svh; background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:17px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  display:flex; justify-content:center;
+  overflow-wrap:anywhere;
+}
+/* Chi riceve il link può avere 85 anni: il corpo sale a 20px. */
+body.receiving{ font-size:20px; }
+
+.shell{
+  width:100%; max-width:560px; min-height:100svh;
+  display:flex; flex-direction:column;
+  padding:30px 20px calc(28px + env(safe-area-inset-bottom));
+}
+body.receiving .shell{ max-width:460px; }
+@media (min-width:900px){ .shell{ padding-top:52px; } }
+
+button{ font:inherit; color:inherit; background:none; border:none; cursor:pointer; }
+:focus-visible{ outline:3px solid var(--green); outline-offset:3px; border-radius:6px; }
+
+/* ---------------- intestazione ---------------- */
+.top{ display:flex; align-items:center; gap:14px;
+  padding-bottom:20px; border-bottom:1px solid var(--line); }
+.ring{ width:52px; height:52px; flex:none; position:relative; }
+.ring svg{ width:100%; height:100%; display:block; transform:rotate(-90deg); }
+.ring-track{ fill:none; stroke:var(--line-firm); stroke-width:2; }
+.ring-arc{ fill:none; stroke:var(--green); stroke-width:2; stroke-linecap:round;
+  stroke-dasharray:150.8; stroke-dashoffset:42;
+  transition:stroke-dashoffset 1.15s var(--spring); }
+body.closed .ring-arc{ stroke-dashoffset:0; }
+.ring-halo{ fill:none; stroke:var(--green); stroke-width:1.2; opacity:0; transform-origin:50% 50%; }
+.ring-initial{ position:absolute; inset:6px; border-radius:999px;
+  background:var(--green); color:var(--on-green);
+  display:grid; place-items:center; font-family:var(--serif); font-size:19px; }
+.who{ flex:1 1 auto; min-width:0; }
+.who-name{ font-size:18px; font-weight:600; letter-spacing:-.01em; }
+.who-meta{ font-size:15px; color:var(--ink-dim); }
+.count{ display:flex; align-items:center; gap:8px;
+  font-size:14px; color:var(--ink-dim); white-space:nowrap; }
+.stack{ display:flex; }
+.stack i{ width:22px; height:22px; border-radius:999px;
+  border:2px solid var(--paper); background:var(--line-firm); }
+.stack i+i{ margin-left:-8px; }
+
+/* ---------------- avviso indirizzo ---------------- */
+.warn{
+  display:flex; flex-direction:column; gap:10px; align-items:flex-start;
+  margin-top:22px; padding:16px 18px;
+  background:var(--warn-bg); border:1px solid var(--warn-line); border-radius:14px;
+}
+.warn b{ font-size:16px; font-weight:600; }
+.warn p{ font-size:15px; line-height:1.45; color:var(--ink-soft); }
+.warn button{ font-size:15px; font-weight:600; color:var(--green);
+  text-decoration:underline; text-underline-offset:4px; padding:6px 0; }
+
+/* ---------------- struttura ---------------- */
+main{ flex:1 0 auto; padding-top:28px; }
+body.receiving main{ display:flex; flex-direction:column; justify-content:center; }
+.view{ transition:opacity .22s ease, transform .28s var(--spring); }
+.view.enter{ opacity:0; transform:translateY(16px); }
+.view.leave{ opacity:0; transform:translateY(-10px); }
+
+.block{ display:flex; flex-direction:column; gap:18px; }
+.block + .block{ margin-top:36px; }
+.eyebrow{ font-size:13px; font-weight:600; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--ink-dim); }
+h2.step{ font-family:var(--serif); font-size:31px; font-weight:600;
+  letter-spacing:-.015em; line-height:1.1; margin-top:6px; }
+.hint{ font-size:16px; line-height:1.5; color:var(--ink-soft); text-wrap:pretty; }
+
+/* ---------------- griglia compiti ---------------- */
+.grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.tile{
+  position:relative; min-height:112px; padding:15px 16px; text-align:left;
+  display:flex; flex-direction:column; justify-content:space-between; gap:10px;
+  background:var(--card); border:1px solid var(--line); border-radius:13px;
+  transition:box-shadow .14s ease, transform .14s var(--spring);
+}
+.tile:active{ transform:scale(.98); }
+.tile[aria-pressed="true"]{ box-shadow:inset 0 0 0 2px var(--green); }
+.tile-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.tile svg{ width:21px; height:21px; stroke:var(--green); fill:none;
+  stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.tick{ width:19px; height:19px; border-radius:999px; flex:none;
+  background:var(--green); color:var(--on-green);
+  font-size:12px; line-height:19px; text-align:center; }
+.tile-body{ display:flex; flex-direction:column; gap:3px; }
+.tile-body b{ font-size:16px; font-weight:600; line-height:1.25; text-wrap:balance; }
+.tile-body small{ font-size:14px; color:var(--ink-dim); line-height:1.35; }
+
+/* ---------------- dettagli ---------------- */
+.detail{ display:flex; flex-direction:column; gap:13px; padding:18px;
+  background:var(--card); border:1px solid var(--line-firm); border-radius:14px; }
+.detail-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+.detail-head b{ font-size:16px; font-weight:600; }
+.detail-head span{ font-size:14px; color:var(--ink-dim); white-space:nowrap; }
+.items{ display:flex; flex-direction:column; gap:8px; }
+.item{ display:flex; align-items:center; gap:10px;
+  padding:11px 12px; background:var(--paper); border-radius:10px; }
+.item .dot{ width:5px; height:5px; border-radius:999px; background:var(--green); flex:none; }
+.item .txt{ flex:1 1 auto; min-width:0; font-size:16px; line-height:1.3; }
+.item .rm{ flex:none; width:34px; height:34px; border-radius:999px;
+  color:var(--ink-dim); font-size:19px; line-height:1; }
+.item .rm:hover{ background:var(--sand); color:var(--ink); }
+.row{ display:flex; gap:8px; }
+.input{ flex:1 1 auto; min-width:0; width:100%;
+  padding:13px 14px; font:inherit; font-size:16px;
+  color:var(--ink); background:var(--card);
+  border:1px solid var(--line); border-radius:10px; outline:none; }
+.input::placeholder{ color:var(--ink-dim); }
+.input:focus{ border-color:var(--green); }
+textarea.input{ resize:vertical; line-height:1.45; }
+.add{ flex:none; padding:0 18px; font-size:16px; font-weight:500;
+  color:var(--green); background:var(--paper);
+  border:1px solid var(--line-firm); border-radius:10px; }
+.micro{ font-size:14px; color:var(--ink-dim); line-height:1.4; }
+label.lbl{ display:block; font-size:15px; font-weight:500; color:var(--ink-soft); }
+
+/* ---------------- chip ---------------- */
+.chips{ display:flex; flex-wrap:wrap; gap:8px; }
+.chip{ min-height:48px; padding:0 18px; border-radius:999px;
+  background:var(--card); border:1px solid var(--line);
+  font-size:16px; font-weight:500;
+  display:inline-flex; align-items:center;
+  transition:transform .13s var(--spring); }
+.chip:active{ transform:scale(.97); }
+.chip[aria-pressed="true"]{ background:var(--green); color:var(--on-green); border-color:var(--green); }
+
+/* ---------------- anteprima e invio ---------------- */
+.send-box{ display:flex; flex-direction:column; gap:14px;
+  margin-top:36px; padding:20px; background:var(--sand); border-radius:16px; }
+.sentence{ font-family:var(--serif); font-size:20px; line-height:1.4;
+  color:var(--ink); text-wrap:pretty; }
+.sentence-sub{ font-size:15px; line-height:1.45; color:var(--ink-soft); text-wrap:pretty; }
+
+.btn{ min-height:58px; width:100%; padding:0 18px; border-radius:13px;
+  display:inline-flex; align-items:center; justify-content:center; gap:10px;
+  font-size:18px; font-weight:600; letter-spacing:-.005em;
+  transition:transform .13s var(--spring), opacity .18s ease, background-color .15s ease; }
+body.receiving .btn{ min-height:64px; font-size:20px; }
+.btn:active{ transform:scale(.975); }
+.btn.primary{ background:var(--green); color:var(--on-green); }
+.btn.primary:hover{ background:var(--green-hi); }
+.btn.primary[aria-disabled="true"]{ opacity:.42; }
+.btn.ghost{ background:var(--card); border:1px solid var(--line-firm); color:var(--ink); }
+.btn.quiet{ min-height:50px; color:var(--ink-dim); font-size:16px; font-weight:400;
+  text-decoration:underline; text-underline-offset:4px; }
+.btn svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.8;
+  stroke-linecap:round; stroke-linejoin:round; }
+.action-hint{ text-align:center; font-size:15px; color:var(--ink-dim); line-height:1.45; }
+.pills{ display:flex; flex-wrap:wrap; gap:10px; padding-top:4px; }
+.pill{ padding:11px 18px; font-size:16px; font-weight:500; border-radius:999px;
+  background:var(--card); border:1px solid var(--line-firm); }
+.pill.bare{ background:none; border-color:transparent; color:var(--ink-dim); }
+
+/* ---------------- inviato ---------------- */
+.sent-box{ display:flex; flex-direction:column; gap:15px; align-items:flex-start;
+  padding:30px; background:var(--card); border:1px solid var(--line); border-radius:16px; }
+.seal{ width:44px; height:44px; border-radius:999px;
+  background:var(--green); color:var(--on-green);
+  display:grid; place-items:center; font-size:20px; }
+h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
+  letter-spacing:-.015em; line-height:1.1; }
+
+/* ---------------- lato ricevente ---------------- */
+.card{ background:var(--card); border:1px solid var(--line);
+  border-radius:20px; padding:26px 24px; }
+.card-ico svg{ width:32px; height:32px; stroke:var(--green); fill:none;
+  stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+.card-title{ font-family:var(--serif); font-weight:600; font-size:37px;
+  line-height:1.12; letter-spacing:-.02em; margin:14px 0 12px; }
+.card-when{ font-size:21px; font-weight:600; }
+.card-dur{ font-size:17px; color:var(--ink-dim); }
+
+.section-lbl{ font-size:15px; font-weight:600; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--ink-dim); margin-bottom:8px; }
+.plainlist{ margin-top:20px; }
+.plainlist .item{ background:var(--paper); }
+
+/* la lista diventa spuntabile solo dopo il sì: serve alla Coop */
+.checklist{ display:flex; flex-direction:column; gap:8px; }
+.check{ display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+  padding:13px 14px; background:var(--paper); border-radius:11px;
+  font-size:18px; line-height:1.3; }
+.check .box{ width:27px; height:27px; flex:none; border-radius:7px;
+  border:2px solid var(--line-firm); display:grid; place-items:center;
+  font-size:15px; color:transparent; }
+.check[aria-pressed="true"] .box{ background:var(--green); border-color:var(--green); color:var(--on-green); }
+.check[aria-pressed="true"] .txt{ text-decoration:line-through; color:var(--ink-dim); }
+
+.info{ margin-top:20px; padding:15px 17px; background:var(--paper);
+  border:1px solid var(--line); border-radius:12px;
+  font-size:17px; color:var(--ink-soft); line-height:1.45; }
+.words{ margin-top:20px; padding:16px 18px; background:var(--paper);
+  border-left:3px solid var(--green); border-radius:0 12px 12px 0;
+  font-family:var(--serif); font-size:18px; color:var(--ink-soft); line-height:1.45; }
+.words-from{ display:block; margin-top:8px; font-family:var(--sans);
+  font-size:15px; font-weight:600; color:var(--ink); }
+
+.kicker{ font-family:var(--serif); font-size:38px; font-weight:600;
+  line-height:1.1; letter-spacing:-.02em; }
+.kicker-sub{ font-family:var(--serif); font-size:26px; font-weight:400;
+  color:var(--ink-soft); margin-top:6px; }
+.recap{ margin-top:22px; padding:18px 20px; font-size:18px;
+  background:var(--card); border:1px solid var(--line); border-radius:16px; }
+.recap span{ color:var(--ink-dim); }
+.after{ margin-top:20px; font-size:17px; color:var(--ink-soft); line-height:1.5; }
+.stack-actions{ display:flex; flex-direction:column; gap:11px; padding-top:22px; }
+.reassure{ text-align:center; font-size:16px; color:var(--ink-dim);
+  line-height:1.45; padding-top:10px; }
+
+/* ---------------- toast ---------------- */
+.toast-layer{ position:fixed; left:0; right:0;
+  bottom:calc(16px + env(safe-area-inset-bottom));
+  display:flex; justify-content:center; pointer-events:none; padding:0 18px; z-index:30; }
+.toast{ max-width:420px; padding:14px 20px; border-radius:13px;
+  background:var(--ink); color:var(--paper); font-size:16px; line-height:1.4; text-align:center;
+  box-shadow:0 10px 30px rgb(0 0 0 / .18);
+  opacity:0; transform:translateY(16px) scale(.97);
+  transition:opacity .25s ease, transform .33s var(--spring); }
+.toast.show{ opacity:1; transform:none; }
+
+.settings-link{ margin-top:30px; text-align:center; }
+.settings-link button{ font-size:15px; color:var(--ink-dim);
+  text-decoration:underline; text-underline-offset:4px; padding:8px; }
+.sr{ position:absolute; width:1px; height:1px; padding:0; overflow:hidden;
+  clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
+}
+/* telefoni stretti: la griglia diventa elenco */
+@media (max-width:430px){
+  .grid{ grid-template-columns:1fr; gap:8px; }
+  .tile{ min-height:0; flex-direction:row; align-items:center; gap:14px; }
+  .tile-head{ flex:none; flex-direction:column; }
+  .tile-body{ flex:1 1 auto; }
+  h2.step{ font-size:27px; }
+  .card-title{ font-size:32px; }
+  .kicker{ font-size:33px; }
+}
+
+/* ---- foto allegate: ricetta, tessera sanitaria, lista scritta a mano ---- */
+.shots{ display:flex; flex-wrap:wrap; gap:9px; }
+.shot{ position:relative; width:78px; height:78px; border-radius:11px; overflow:hidden;
+  border:1px solid var(--line-firm); background:var(--paper); }
+.shot img{ width:100%; height:100%; object-fit:cover; display:block; }
+.shot button{ position:absolute; top:3px; right:3px; width:28px; height:28px; border-radius:999px;
+  background:rgb(0 0 0 / .62); color:#fff; font-size:16px; line-height:28px; text-align:center; }
+.shot-add{ width:78px; height:78px; border-radius:11px; border:1px dashed var(--line-firm);
+  background:var(--paper); display:grid; place-items:center; color:var(--green); }
+.shot-add svg{ width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:1.6;
+  stroke-linecap:round; stroke-linejoin:round; }
+.attach{ margin-top:18px; padding:14px 16px; background:var(--paper);
+  border:1px dashed var(--line-firm); border-radius:12px;
+  font-size:16px; line-height:1.45; color:var(--ink-soft); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <header class="top">
+    <div class="ring" aria-hidden="true">
+      <svg viewBox="0 0 52 52">
+        <circle class="ring-track" cx="26" cy="26" r="24"></circle>
+        <circle class="ring-halo"  cx="26" cy="26" r="24" id="halo"></circle>
+        <circle class="ring-arc"   cx="26" cy="26" r="24"></circle>
+      </svg>
+      <div class="ring-initial" id="avatar">E</div>
+    </div>
+    <div class="who">
+      <p class="who-name" id="who">Elena</p>
+      <p class="who-meta" id="meta">Firenze, via Pisana</p>
+    </div>
+    <div class="count" id="count" hidden>
+      <span class="stack" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span id="count-label"></span>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- ============ CO-PILOTA ============ -->
+    <section class="route" id="r-compose" hidden>
+
+      <div class="view" id="v-compose" hidden>
+
+        <div class="warn" id="warn" hidden>
+          <b>Manca l'indirizzo della pagina</b>
+          <p id="warn-text"></p>
+          <button type="button" id="warn-go">Aprire le impostazioni</button>
+        </div>
+
+        <div class="block">
+          <div>
+            <p class="eyebrow">Cosa serve</p>
+            <h2 class="step" id="s1" tabindex="-1">Scegli il compito</h2>
+            <p class="hint">Descrivi cosa va fatto, non quello che lei non riesce più a fare.</p>
+          </div>
+          <div class="grid" id="tiles" role="group" aria-labelledby="s1"></div>
+
+          <div class="detail" id="detail" hidden>
+            <div class="detail-head"><b id="d-label"></b><span id="d-meta"></span></div>
+
+            <div id="d-list" hidden>
+              <div class="items" id="d-items"></div>
+              <div class="row" style="margin-top:8px">
+                <input class="input" id="d-draft" autocomplete="off" autocapitalize="sentences"
+                       enterkeyhint="done" maxlength="80" aria-label="Aggiungi alla lista">
+                <button class="add" id="d-add" type="button">Aggiungi</button>
+              </div>
+              <p class="micro" style="margin-top:8px">
+                Invio per aggiungere. Chi risponde vede la lista e può spuntarla mentre è lì.
+              </p>
+            </div>
+
+            <div id="d-text" hidden>
+              <input class="input" id="d-value" autocomplete="off" autocapitalize="sentences"
+                     enterkeyhint="done" maxlength="140" aria-label="Dettagli">
+              <p class="micro" id="d-note" style="margin-top:8px"></p>
+            </div>
+
+            <div id="d-photo" hidden style="border-top:1px solid var(--line); padding-top:14px">
+              <p class="lbl" id="p-label" style="margin-bottom:9px"></p>
+              <div class="shots" id="shots"></div>
+              <p class="micro" id="p-note" style="margin-top:9px"></p>
+              <input type="file" id="p-input" accept="image/*" multiple hidden>
+            </div>
+          </div>
+        </div>
+
+        <div class="block">
+          <div>
+            <p class="eyebrow">Quando</p>
+            <h2 class="step" id="s2">Un momento indicativo</h2>
+            <p class="hint">Chi risponde si accorda direttamente con <span id="s2-name">Elena</span>.</p>
+          </div>
+          <div class="chips" id="whens" role="group" aria-labelledby="s2"></div>
+          <div id="day-wrap" hidden>
+            <label class="lbl" for="f-day">Che giorno</label>
+            <input class="input" id="f-day" type="date" style="max-width:260px;margin-top:7px">
+          </div>
+        </div>
+
+        <div class="block">
+          <div>
+            <p class="eyebrow">Facoltativo</p>
+            <h2 class="step" id="s3">Le sue parole</h2>
+            <p class="hint">
+              Se te l'ha detto lei, scrivilo com'era. Chi legge riconosce sua nonna,
+              non un incarico.
+            </p>
+          </div>
+          <textarea class="input" id="f-words" rows="2" aria-labelledby="s3"
+            placeholder="La lista è sul frigo, ho scritto grosso così si legge."></textarea>
+        </div>
+
+        <div class="send-box">
+          <div>
+            <p class="eyebrow" style="margin-bottom:8px">Il messaggio nel gruppo</p>
+            <p class="sentence" id="sentence"></p>
+            <p class="sentence-sub" id="sentence-sub" hidden></p>
+          </div>
+          <button class="btn primary" id="btn-send" aria-disabled="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2-6-8-2z"/></svg>
+            Manda nel gruppo
+          </button>
+          <p class="action-hint" id="action-hint" aria-live="polite"></p>
+        </div>
+
+        <p class="settings-link"><button id="btn-settings" type="button">Impostazioni</button></p>
+      </div>
+
+      <div class="view" id="v-sent" hidden>
+        <div class="sent-box">
+          <div class="seal" aria-hidden="true">✓</div>
+          <h2 class="sealed" id="k-sent" tabindex="-1">È nel cerchio</h2>
+          <p class="sentence" id="sent-sentence"></p>
+          <p class="sentence-sub" id="sent-sub" hidden></p>
+          <p class="hint" id="sent-confirm"></p>
+          <div class="pills">
+            <button class="pill" id="btn-resend" type="button">Rimanda il messaggio</button>
+            <button class="pill" id="btn-copy" type="button">Copia il link</button>
+            <button class="pill" id="btn-edit" type="button">Modifica</button>
+            <button class="pill bare" id="btn-reset" type="button">Nuova richiesta</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="view" id="v-settings" hidden>
+        <h2 class="step" id="k-set" tabindex="-1" style="margin-top:0">Impostazioni</h2>
+        <p class="hint" style="margin-top:6px">Restano su questo telefono. Non escono da qui.</p>
+
+        <div class="block" style="margin-top:24px">
+          <div>
+            <label class="lbl" for="f-base">Indirizzo di questa pagina</label>
+            <p class="micro" style="margin:5px 0 7px">
+              Serve a costruire i link da mandare. Deve iniziare per https://
+            </p>
+            <input class="input" id="f-base" autocomplete="off" inputmode="url"
+                   placeholder="https://ilcerchio.netlify.app/">
+            <p class="micro" id="base-state" style="margin-top:7px"></p>
+          </div>
+          <div>
+            <label class="lbl" for="f-name">Come si chiama</label>
+            <input class="input" id="f-name" style="margin-top:7px" autocomplete="off">
+          </div>
+          <div>
+            <label class="lbl" for="f-place">Dove abita</label>
+            <input class="input" id="f-place" style="margin-top:7px" autocomplete="off">
+          </div>
+          <div>
+            <label class="lbl" for="f-size">Quante persone nel cerchio</label>
+            <input class="input" id="f-size" type="number" min="1" max="20" inputmode="numeric"
+                   style="margin-top:7px;max-width:140px">
+          </div>
+          <div>
+            <label class="lbl" for="f-cond">Cosa preferisce fare da sé</label>
+            <p class="micro" style="margin:5px 0 7px">
+              Serve a te, non viene mandato a nessuno. Chiediglielo, non deciderlo tu.
+            </p>
+            <textarea class="input" id="f-cond" rows="3"
+              placeholder="Cucina da sola. In camera entra solo Anna. Non vuole aiuto in bagno."></textarea>
+          </div>
+          <button class="btn primary" id="btn-save" style="margin-top:6px">Salva</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CHI RICEVE IL LINK ============ -->
+    <section class="route" id="r-task" hidden>
+
+      <div class="view" id="v-task" hidden>
+        <p class="eyebrow" id="t-eyebrow"></p>
+        <article class="card" style="margin-top:12px">
+          <p class="card-ico" id="t-icon" aria-hidden="true"></p>
+          <h1 class="card-title" id="t-title" tabindex="-1"></h1>
+          <p class="card-when" id="t-when"></p>
+          <p class="card-dur" id="t-dur" hidden></p>
+
+          <div class="plainlist" id="t-list" hidden>
+            <p class="section-lbl" id="t-list-label"></p>
+            <div class="items" id="t-items"></div>
+          </div>
+
+          <p class="info" id="t-info" hidden></p>
+          <p class="attach" id="t-attach" hidden></p>
+
+          <div class="words" id="t-words" hidden>
+            <span id="t-words-text"></span>
+            <span class="words-from" id="t-words-from"></span>
+          </div>
+        </article>
+
+        <div class="stack-actions">
+          <button class="btn primary" id="btn-yes" aria-describedby="reassure">Ci penso io</button>
+          <button class="btn ghost" id="btn-nope">Non riesco stavolta</button>
+          <p class="reassure" id="reassure">Se non riesci va bene.<br>Lo vede qualcun altro.</p>
+        </div>
+      </div>
+
+      <div class="view" id="v-yes" hidden>
+        <h1 class="kicker" id="k-yes" tabindex="-1">Fatto.</h1>
+        <p class="kicker-sub" id="s-yes"></p>
+        <p class="recap"><b id="y-title"></b> <span id="y-when"></span></p>
+
+        <div id="y-list" hidden style="margin-top:24px">
+          <p class="section-lbl">Da prendere</p>
+          <div class="checklist" id="y-checks"></div>
+          <p class="micro" style="margin-top:10px">Spunta mentre sei lì. Resta su questo telefono.</p>
+        </div>
+
+        <p class="after">Manca un passaggio: dillo nel gruppo, così gli altri non ci pensano più.</p>
+
+        <div class="stack-actions">
+          <button class="btn primary" id="btn-tell">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2-6-8-2z"/></svg>
+            Dillo nel gruppo
+          </button>
+          <button class="btn quiet" id="btn-yes-bye">Ho già scritto, grazie</button>
+        </div>
+      </div>
+
+      <div class="view" id="v-no" hidden>
+        <h1 class="kicker" id="k-no" tabindex="-1">Nessun problema.</h1>
+        <p class="kicker-sub">Lo vede qualcun altro.</p>
+        <p class="after">Se vuoi, scrivilo nel gruppo: chi legge sa che deve pensarci lui.</p>
+        <div class="stack-actions">
+          <button class="btn ghost" id="btn-tell-no">Scrivilo nel gruppo</button>
+          <button class="btn quiet" id="btn-no-bye">Va bene così</button>
+        </div>
+      </div>
+
+      <div class="view" id="v-bye" hidden>
+        <h1 class="kicker" id="k-bye" tabindex="-1"></h1>
+        <p class="kicker-sub" id="s-bye"></p>
+      </div>
+    </section>
+  </main>
+
+  <p class="sr" role="status" aria-live="polite" id="live"></p>
+</div>
+
+<div class="toast-layer"><p class="toast" id="toast" role="status" aria-live="polite"></p></div>
+
+<script>
+"use strict";
+
+/* ========================== 1 · ICONE ========================== */
+const ICONS = {
+  spesa:'<path d="M3 5h2l2.4 11.2a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.6L21 8H6"/><circle cx="10" cy="21" r="1"/><circle cx="18" cy="21" r="1"/>',
+  medicine:'<rect x="3" y="9" width="13" height="8" rx="4"/><path d="M9.5 9v8"/><path d="M18 6v6M15 9h6"/>',
+  visita:'<path d="M3 16h18M5 16V11l2-5h10l2 5v5"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="16.5" cy="18.5" r="1.5"/>',
+  casa:'<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+  pasto:'<path d="M4 10h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8z"/><path d="M3 21h18"/><path d="M9 6c0-1 1-1 1-2M13 6c0-1 1-1 1-2"/>',
+  commissione:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 8l9 6 9-6"/>',
+  compagnia:'<circle cx="9" cy="9" r="3"/><path d="M3 20c0-3 2.7-5 6-5s6 2 6 5"/><path d="M17 8a3 3 0 0 1 0 6"/><path d="M18 20c0-2-.7-3.5-2-4.5"/>',
+  altro:'<path d="M4 20l4-1 10-10-3-3L5 16z"/><path d="M14 6l3 3"/>'
+,
+  camera:'<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/>'
+};
+const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ICONS.altro}</svg>`;
+
+/* ========================== 2 · COMPITI ========================== */
+const TASKS = [
+  { id:"spesa",       icon:"spesa",       t:"Fare la spesa",               h:"buste pesanti",             p:"fare la spesa",                            d:"circa 45 minuti" },
+  { id:"medicine",    icon:"medicine",    t:"Ritirare le medicine",        h:"in farmacia",               p:"ritirare le medicine in farmacia",         d:"circa 20 minuti" },
+  { id:"visita",      icon:"visita",      t:"Accompagnare a una visita",   h:"in macchina",               p:"andare a una visita in macchina",          d:"attesa inclusa" },
+  { id:"casa",        icon:"casa",        t:"Dare una mano in casa",       h:"le cose in alto",           p:"una mano in casa",                         d:"circa un'ora" },
+  { id:"pasto",       icon:"pasto",       t:"Portare o cucinare un pasto", h:"anche una porzione in più", p:"un pasto",                                 d:"" },
+  { id:"commissione", icon:"commissione", t:"Fare una commissione",        h:"posta, banca, bollette",    p:"una commissione: posta, banca o bollette", d:"circa 30 minuti" },
+  { id:"compagnia",   icon:"compagnia",   t:"Passare a trovarla",          h:"non serve un motivo",       p:"un po' di compagnia",                      d:"il tempo che hai" },
+  { id:"altro",       icon:"altro",       t:"Altro",                       h:"scrivi tu",                 p:"",                                         d:"" }
+];
+const WHENS = [
+  { id:"oggi", label:"Oggi", p:"oggi" },
+  { id:"domani", label:"Domani", p:"domani" },
+  { id:"settimana", label:"Questa settimana", p:"in settimana" },
+  { id:"ricorrente", label:"Ogni settimana", p:"ogni settimana" },
+  { id:"giorno", label:"Scegli il giorno", p:"" }
+];
+const DETAILS = {
+  spesa:       { kind:"list", label:"La lista della spesa", ph:"es. 2 litri di latte",
+                 photo:"Foto della lista scritta a mano",
+                 photoNote:"Se te l'ha scritta lei, fotografala: si legge meglio dell'originale ricopiato." },
+  medicine:    { kind:"list", label:"Cosa ritirare", ph:"es. Cardioaspirina",
+                 note:"Non serve scrivere perché le prende.",
+                 photo:"Foto della ricetta e della tessera sanitaria",
+                 photoNote:"In farmacia servono entrambe. Partono nel gruppo insieme al messaggio, non dentro il link." },
+  commissione: { kind:"list", label:"Le commissioni", ph:"es. pagare la bolletta della luce",
+                 photo:"Foto del bollettino o del documento",
+                 photoNote:"Serve allo sportello per pagamenti e pratiche." },
+  visita:      { kind:"text", label:"Dove e a che ora", ph:"es. Careggi, radiologia, ore 10",
+                 note:"Serve anche il ritorno? Scrivilo qui.",
+                 photo:"Foto dell'impegnativa o del promemoria", photoNote:"Facoltativa." },
+  casa:        { kind:"text", label:"Cosa c'è da fare", ph:"es. cambiare la lampadina in cucina",
+                 note:"Una cosa per volta funziona meglio.",
+                 photo:"Foto di cosa serve", photoNote:"Una foto spiega meglio di tre righe." },
+  pasto:       { kind:"text", label:"Cosa le farebbe piacere", ph:"es. una minestra, poco sale",
+                 note:"Cose da evitare: scrivile qui." },
+  compagnia:   { kind:"text", label:"Qualcosa da sapere", ph:"es. le piace parlare di giardinaggio",
+                 note:"Facoltativo." },
+  altro:       { kind:"text", label:"Di cosa si tratta", ph:"es. cambiare una lampadina in cucina",
+                 note:"Basta una frase." }
+};
+
+/* ========================== 3 · STATO ========================== */
+const el = id => document.getElementById(id);
+const KEY_SETUP = "cerchio:setup", KEY_TICKS = "cerchio:ticks:", KEY_DRAFT = "cerchio:bozza";
+const store = {
+  get(k, f){ try { return JSON.parse(localStorage.getItem(k)) ?? f; } catch { return f; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k){ try { localStorage.removeItem(k); } catch {} }
+};
+
+/* FIX v3 — l'origine va validata.
+   In una preview in sandbox location.origin vale "null" e pathname "srcdoc":
+   concatenandoli nasceva "nullsrcdoc", che WhatsApp non rende cliccabile. */
+function detectBase(){
+  const ok = location.protocol === "https:" || location.protocol === "http:";
+  if (!ok) return "";
+  return (location.origin + location.pathname).replace(/#.*$/, "").replace(/\?.*$/, "");
+}
+function normalizeBase(v){
+  let s = (v || "").trim();
+  if (!s) return "";
+
+  // Schemi non navigabili: rifiutati, non "riparati". Aggiungere https://
+  // davanti a "nullsrcdoc" o a un percorso locale produce un indirizzo che
+  // sembra valido e non lo è — era esattamente il link non cliccabile
+  // arrivato su WhatsApp.
+  if (/^(about|file|blob|data|javascript):/i.test(s)) return "";
+  if (!/^https?:\/\//i.test(s)){
+    if (s.includes("/") && !s.split("/")[0].includes(".")) return "";
+    s = "https://" + s.replace(/^\/+/, "");
+  }
+
+  try {
+    const u = new URL(s);
+    const host = u.hostname;
+    if (!host) return "";
+    const isIP = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+    const isLocal = host === "localhost";
+    // Un host senza punto non esiste su internet: "null", "srcdoc",
+    // "nullsrcdoc" cadono tutti qui.
+    if (!isIP && !isLocal && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)) return "";
+    return u.origin + u.pathname;
+  } catch { return ""; }
+}
+
+let setup = Object.assign(
+  { name:"Elena", place:"Firenze, via Pisana", size:4, conditions:"", base:"" },
+  store.get(KEY_SETUP, {})
+);
+if (!setup.base) setup.base = detectBase();
+
+let draft = { task:null, lists:{}, texts:{}, when:null, day:"", words:"", shots:{} };
+/* shots è indicizzato per compito, come lists e texts: allegando la ricetta
+   a "medicine" e poi cambiando compito, le foto restavano attaccate e
+   partivano lo stesso, pur essendo sparite dallo schermo. */
+const myShots = () => (draft.task && draft.shots[draft.task]) || [];
+let task = null, ticks = {}, current = null;
+
+const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const buzz = () => { try { navigator.vibrate && navigator.vibrate(12); } catch {} };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+/* payload compatto: array anziché oggetto → link 25% più corto */
+const b64 = o => btoa(unescape(encodeURIComponent(JSON.stringify(o))))
+  .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+const unb64 = s => JSON.parse(decodeURIComponent(escape(
+  atob(String(s).replace(/-/g,"+").replace(/_/g,"/")))));
+
+/* Le "sue parole" ora stanno dentro il payload codificato come tutto il
+   resto. Prima viaggiavano in chiaro come &m=... : comparivano nella barra
+   degli indirizzi e in qualsiasi anteprima del link. */
+function pack(p){ return b64([1, p.n, p.p, p.k, p.t, p.w, p.d, p.x, p.ll, p.l, p.m || "", p.f || 0]); }
+function unpack(s){
+  const a = unb64(s);
+  if (Array.isArray(a)){
+    return { n:a[1]||"", p:a[2]||"", k:a[3]||"altro", t:a[4]||"", w:a[5]||"",
+             d:a[6]||"", x:a[7]||"", ll:a[8]||"", l:a[9]||[], m:a[10]||"", f:a[11]||0 };
+  }
+  return a; // retrocompatibilità con i link della v2
+}
+
+/* ========================== 4 · NAVIGAZIONE ========================== */
+const VIEWS = {
+  compose:{ v:"v-compose", r:"r-compose", f:"s1", recv:false },
+  sent:{ v:"v-sent", r:"r-compose", f:"k-sent", recv:false },
+  settings:{ v:"v-settings", r:"r-compose", f:"k-set", recv:false },
+  task:{ v:"v-task", r:"r-task", f:"t-title", recv:true },
+  yes:{ v:"v-yes", r:"r-task", f:"k-yes", recv:true },
+  no:{ v:"v-no", r:"r-task", f:"k-no", recv:true },
+  bye:{ v:"v-bye", r:"r-task", f:"k-bye", recv:true }
+};
+
+function go(key, announce){
+  const next = VIEWS[key]; if (!next) return;
+  const paint = () => {
+    Object.values(VIEWS).forEach(x => el(x.v).hidden = true);
+    ["r-compose","r-task"].forEach(r => el(r).hidden = true);
+    el(next.r).hidden = false;
+    el(next.v).hidden = false;
+    document.body.classList.toggle("receiving", next.recv);
+
+    const node = el(next.v);
+    node.classList.add("enter");
+    requestAnimationFrame(() => requestAnimationFrame(() => node.classList.remove("enter")));
+    window.scrollTo(0, 0);
+    setTimeout(() => { try { el(next.f).focus({ preventScroll:true }); } catch {} },
+      reduced() ? 0 : 260);
+    if (announce) el("live").textContent = announce;
+    current = key;
+  };
+  if (current && !reduced()){
+    const old = el(VIEWS[current].v);
+    old.classList.add("leave");
+    setTimeout(() => { old.classList.remove("leave"); paint(); }, 190);
+  } else paint();
+}
+
+function closeRing(){
+  document.body.classList.add("closed");
+  if (reduced() || !el("halo").animate) return;
+  el("halo").animate([{opacity:.5,transform:"scale(1)"},{opacity:0,transform:"scale(1.3)"}],
+    {duration:1100, easing:"cubic-bezier(.22,.9,.3,1)", delay:150});
+  el("avatar").animate([{transform:"scale(1)"},{transform:"scale(1.06)"},{transform:"scale(1)"}],
+    {duration:700, easing:"cubic-bezier(.22,.9,.3,1)", delay:350});
+}
+
+let tTimer = null;
+function toast(text){
+  const n = el("toast");
+  n.textContent = text; n.classList.add("show");
+  if (tTimer) clearTimeout(tTimer);
+  tTimer = setTimeout(() => n.classList.remove("show"), 4600);
+}
+
+/* ========================== 5 · COMPOSITORE ========================== */
+function paintHeader(showCount){
+  el("avatar").textContent = (setup.name || "?").charAt(0).toUpperCase();
+  el("who").textContent = setup.name || "—";
+  el("meta").textContent = setup.place || "";
+  el("s2-name").textContent = setup.name || "lei";
+  el("count").hidden = !showCount;
+  el("count-label").textContent = setup.size + " nel cerchio";
+}
+
+function checkBase(){
+  const ok = !!normalizeBase(setup.base);
+  el("warn").hidden = ok;
+  if (!ok){
+    el("warn-text").textContent = detectBase()
+      ? "Non riesco a costruire i link. Incolla l'indirizzo del sito nelle impostazioni."
+      : "Stai aprendo la pagina in anteprima o da file locale, quindi il link nel messaggio non sarebbe cliccabile. Mettila online e incolla qui l'indirizzo.";
+  }
+  return ok;
+}
+
+function buildComposer(){
+  el("tiles").innerHTML = TASKS.map(t =>
+    `<button class="tile" type="button" data-id="${t.id}" aria-pressed="false">
+       <span class="tile-head">${svg(t.icon)}<span class="tick" aria-hidden="true" hidden>✓</span></span>
+       <span class="tile-body"><b>${esc(t.t)}</b><small>${esc(t.h)}</small></span>
+     </button>`).join("");
+
+  el("whens").innerHTML = WHENS.map(w =>
+    `<button class="chip" type="button" data-id="${w.id}" aria-pressed="false">${esc(w.label)}</button>`).join("");
+
+  el("tiles").addEventListener("click", e => {
+    const b = e.target.closest(".tile"); if (!b) return;
+    buzz(); draft.task = b.dataset.id;
+    Array.from(el("tiles").children).forEach(x => {
+      const on = x === b;
+      x.setAttribute("aria-pressed", String(on));
+      x.querySelector(".tick").hidden = !on;
+    });
+    paintDetail(); refresh();
+  });
+
+  el("whens").addEventListener("click", e => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    buzz(); draft.when = b.dataset.id;
+    Array.from(el("whens").children).forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    const pick = draft.when === "giorno";
+    el("day-wrap").hidden = !pick;
+    if (pick) el("f-day").focus();
+    refresh();
+  });
+
+  el("p-input").addEventListener("change", e => addShots(e.target.files));
+  el("d-add").onclick = addItem;
+  el("d-draft").addEventListener("keydown", e => {
+    if (e.key === "Enter"){ e.preventDefault(); addItem(); }
+  });
+  el("d-value").addEventListener("input", e => { draft.texts[draft.task] = e.target.value; refresh(); });
+  el("f-day").addEventListener("input", e => { draft.day = e.target.value; refresh(); });
+  el("f-words").addEventListener("input", e => { draft.words = e.target.value; refresh(); });
+  el("warn-go").onclick = openSettings;
+}
+
+const MAX_VOCE = 80;
+
+function addItem(){
+  let v = el("d-draft").value.trim();
+  if (!v || !draft.task) return;
+
+  // Una voce della spesa è un prodotto, non un paragrafo: oltre gli 80
+  // caratteri diventa illeggibile sul telefono di chi la deve spuntare.
+  if (v.length > MAX_VOCE){
+    v = v.slice(0, MAX_VOCE).trim();
+    toast("Voce accorciata: tienile brevi.");
+  }
+
+  const gia = draft.lists[draft.task] = draft.lists[draft.task] || [];
+  if (gia.some(x => x.toLowerCase() === v.toLowerCase())){
+    el("d-draft").value = "";
+    toast("C'è già nella lista.");
+    return;
+  }
+
+  gia.push(v);
+  el("d-draft").value = ""; el("d-draft").focus();
+  paintDetail(); refresh();
+}
+
+
+/* ==========================================================================
+   FOTO ALLEGATE
+   Un'immagine non entra in un link: servirebbero centinaia di migliaia di
+   caratteri. Viaggiano invece nella condivisione nativa, insieme al
+   messaggio, e finiscono nel gruppo sopra il link. Chi apre il compito
+   legge che le foto sono lì.
+   ========================================================================== */
+function addShots(files){
+  if (!draft.task) return;
+  const list = draft.shots[draft.task] || (draft.shots[draft.task] = []);
+  for (const f of files){
+    if (!f.type || !f.type.startsWith("image/")) continue;
+    if (list.length >= 4){ toast("Massimo quattro foto."); break; }
+    list.push({ file:f, url:URL.createObjectURL(f) });
+  }
+  el("p-input").value = "";
+  paintShots(); refresh();
+}
+
+function clearShots(){
+  Object.values(draft.shots).flat().forEach(s => { try { URL.revokeObjectURL(s.url); } catch {} });
+  draft.shots = {};
+}
+
+function paintShots(){
+  const cfg = DETAILS[draft.task] || {};
+  const list = myShots();
+  el("shots").innerHTML =
+    list.map((s,i) =>
+      `<div class="shot"><img src="${s.url}" alt="Foto ${i+1}">
+         <button type="button" data-i="${i}" aria-label="Togli la foto ${i+1}">×</button></div>`).join("") +
+    (list.length < 4
+      ? `<button class="shot-add" type="button" id="shot-add" aria-label="${esc(cfg.photo || "Aggiungi una foto")}">${svg("camera")}</button>`
+      : "");
+  el("shots").querySelectorAll(".shot button").forEach(b => b.onclick = () => {
+    const i = +b.dataset.i, arr = myShots();
+    try { URL.revokeObjectURL(arr[i].url); } catch {}
+    arr.splice(i, 1);
+    paintShots(); refresh();
+  });
+  const add = el("shot-add");
+  if (add) add.onclick = () => el("p-input").click();
+}
+
+function paintDetail(){
+  const cfg = DETAILS[draft.task];
+  el("detail").hidden = !cfg;
+  if (!cfg) return;
+  el("d-label").textContent = cfg.label;
+  el("d-list").hidden = cfg.kind !== "list";
+  el("d-text").hidden = cfg.kind !== "text";
+
+  if (cfg.kind === "list"){
+    const items = draft.lists[draft.task] || [];
+    el("d-meta").textContent = items.length
+      ? items.length + (items.length === 1 ? " cosa" : " cose") : "Facoltativo";
+    el("d-items").innerHTML = items.map((x,i) =>
+      `<div class="item"><span class="dot" aria-hidden="true"></span>
+         <span class="txt">${esc(x)}</span>
+         <button class="rm" type="button" data-i="${i}" aria-label="Togli ${esc(x)}">×</button></div>`).join("");
+    el("d-items").querySelectorAll(".rm").forEach(b => b.onclick = () => {
+      draft.lists[draft.task].splice(+b.dataset.i, 1);
+      paintDetail(); refresh();
+    });
+    el("d-draft").placeholder = cfg.ph;
+  } else {
+    el("d-meta").textContent = "Facoltativo";
+    el("d-value").value = draft.texts[draft.task] || "";
+    el("d-value").placeholder = cfg.ph;
+    el("d-note").textContent = cfg.note || "";
+  }
+
+  el("d-photo").hidden = !cfg.photo;
+  if (cfg.photo){
+    el("p-label").textContent = cfg.photo;
+    el("p-note").textContent = cfg.photoNote || "";
+    paintShots();
+  }
+}
+
+function taskPhrase(){
+  const t = TASKS.find(x => x.id === draft.task); if (!t) return null;
+  if (t.id === "altro") return (draft.texts.altro || "").trim() || null;
+  return t.p;
+}
+function whenPhrase(){
+  const w = WHENS.find(x => x.id === draft.when); if (!w) return null;
+  if (w.id === "giorno"){
+    if (!draft.day) return null;
+    const d = new Date(draft.day + "T12:00:00");
+    if (isNaN(d.getTime())) return null;
+    return new Intl.DateTimeFormat("it-IT",
+      { weekday:"long", day:"numeric", month:"long", timeZone:"Europe/Rome" }).format(d);
+  }
+  return w.p;
+}
+function detailLine(){
+  const cfg = DETAILS[draft.task]; if (!cfg) return "";
+  if (cfg.kind === "list") return (draft.lists[draft.task] || []).join(" · ");
+  if (draft.task === "altro") return "";
+  return (draft.texts[draft.task] || "").trim();
+}
+
+function payload(){
+  const t = TASKS.find(x => x.id === draft.task) || {};
+  const cfg = DETAILS[draft.task] || {};
+  return {
+    n:setup.name, p:setup.place, k:t.icon || "altro",
+    t: draft.task === "altro" ? (draft.texts.altro || "").trim() : (t.t || ""),
+    w: whenPhrase() || "", d: t.d || "",
+    l: cfg.kind === "list" ? (draft.lists[draft.task] || []) : [],
+    ll: cfg.kind === "list" && (draft.lists[draft.task] || []).length ? cfg.label : "",
+    x: cfg.kind === "text" && draft.task !== "altro" ? (draft.texts[draft.task] || "").trim() : "",
+    m: draft.words.trim(),
+    f: myShots().length
+  };
+}
+
+/* FIX v3 — payload in query string: più affidabile del frammento
+   quando il link passa da un client di messaggistica all'altro. */
+function linkFor(){
+  const base = normalizeBase(setup.base);
+  if (!base) return "";
+  const p = payload();
+  return base + "?t=" + pack(p);
+}
+
+function message(){
+  const p = payload(), tp = taskPhrase(), wp = whenPhrase(), dl = detailLine();
+  const lines = [`${p.n} ha bisogno di una mano per ${tp}${wp ? ", " + wp : ""}.`];
+  if (dl) lines.push("", dl);
+  const nFoto = myShots().length;
+  if (nFoto) lines.push("", nFoto === 1
+    ? "La foto è qui sotto." : `Qui sotto trovi le ${nFoto} foto.`);
+  if (p.m) lines.push("", `"${p.m}"`, `— ${p.n}`);
+  lines.push("", "Se puoi prendertelo, apri qui:", linkFor(), "", "Se non puoi, va bene lo stesso.");
+  return lines.join("\n");
+}
+
+
+/* ==========================================================================
+   BOZZA
+   Chi compone la richiesta viene interrotto di continuo: suona il telefono,
+   la nonna richiama, l'app va in background e il sistema scarica la pagina.
+   Ricominciare da capo è il modo più rapido per far abbandonare il prodotto.
+   Le foto non si possono salvare (sono file vivi del sistema): se c'erano,
+   lo diciamo invece di far finta di niente.
+   ========================================================================== */
+const DURATA_BOZZA = 12 * 60 * 60 * 1000;   // 12 ore
+
+function saveDraft(){
+  if (!draft.task && !draft.when && !draft.words){ store.del(KEY_DRAFT); return; }
+  store.set(KEY_DRAFT, {
+    at: Date.now(),
+    task: draft.task, lists: draft.lists, texts: draft.texts,
+    when: draft.when, day: draft.day, words: draft.words,
+    foto: Object.keys(draft.shots).length ? 1 : 0
+  });
+}
+
+function restoreDraft(){
+  const b = store.get(KEY_DRAFT, null);
+  if (!b || !b.at || Date.now() - b.at > DURATA_BOZZA){ store.del(KEY_DRAFT); return false; }
+
+  draft.task  = b.task || null;
+  draft.lists = b.lists || {};
+  draft.texts = b.texts || {};
+  draft.when  = b.when || null;
+  draft.day   = b.day || "";
+  draft.words = b.words || "";
+
+  Array.from(el("tiles").children).forEach(x => {
+    const on = x.dataset.id === draft.task;
+    x.setAttribute("aria-pressed", String(on));
+    const tk = x.querySelector(".tick"); if (tk) tk.hidden = !on;
+  });
+  Array.from(el("whens").children).forEach(x =>
+    x.setAttribute("aria-pressed", String(x.dataset.id === draft.when)));
+
+  el("f-words").value = draft.words;
+  el("f-day").value = draft.day;
+  el("day-wrap").hidden = draft.when !== "giorno";
+  paintDetail();
+
+  if (b.foto) toast("Bozza ripresa. Le foto vanno riallegate.");
+  return true;
+}
+
+function refresh(){
+  saveDraft();
+  const tp = taskPhrase(), wp = whenPhrase();
+  const baseOk = checkBase();
+  const ready = !!tp && !!wp && baseOk;
+
+  el("sentence").textContent = !tp
+    ? `${setup.name} ha bisogno di una mano per…`
+    : `${setup.name} ha bisogno di una mano per ${tp}${wp ? ", " + wp : ""}.`;
+
+  const dl = detailLine();
+  el("sentence-sub").hidden = !dl;
+  el("sentence-sub").textContent = dl;
+
+  el("btn-send").setAttribute("aria-disabled", String(!ready));
+  el("action-hint").textContent =
+    !baseOk ? "Manca l'indirizzo della pagina: senza, il link non si apre."
+    : !tp ? (draft.task === "altro" ? "Scrivi cosa serve per continuare." : "Scegli cosa serve per continuare.")
+    : !wp ? (draft.when === "giorno" ? "Scegli un giorno per continuare." : "Aggiungi quando serve.")
+    : linkFor().length > 700
+      // Non è un limite tecnico: è che 700 caratteri di codice nel messaggio
+      // sono sette righe illeggibili, e chi le riceve si insospettisce.
+      ? "La lista è lunga: il link diventa un muro di caratteri. Meglio fotografarla."
+      : `Lo vedono ${setup.size} persone. Nessuna notifica a ${setup.name}.`;
+}
+
+/* Le foto viaggiano qui: navigator.share le passa a WhatsApp insieme al
+   testo. Se il dispositivo non lo supporta, il messaggio parte lo stesso
+   e avvisiamo che le immagini vanno allegate a mano.
+   L'annullamento volontario non riapre WhatsApp alle spalle dell'utente. */
+async function share(text, files){
+  const data = { text };
+  if (files && files.length){
+    try { if (navigator.canShare && navigator.canShare({ files })) data.files = files; } catch {}
+  }
+  if (navigator.share){
+    try { await navigator.share(data); return data.files ? "shared" : (files && files.length ? "text-only" : "shared"); }
+    catch (err){
+      if (err && (err.name === "AbortError" || err.name === "NotAllowedError")) return "cancelled";
+    }
+  }
+  const w = window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener");
+  if (!w) copy(text, "Messaggio copiato: incollalo in WhatsApp.");
+  return files && files.length ? "text-only" : "opened";
+}
+
+async function copy(text, msg){
+  try { await navigator.clipboard.writeText(text); toast(msg || "Copiato."); }
+  catch {
+    const a = document.createElement("textarea");
+    a.value = text; a.style.position = "fixed"; a.style.opacity = "0";
+    document.body.appendChild(a); a.select();
+    try { document.execCommand("copy"); toast(msg || "Copiato."); }
+    catch { toast("Copia non riuscita: seleziona il testo a mano."); }
+    a.remove();
+  }
+}
+
+el("btn-send").onclick = () => {
+  if (el("btn-send").getAttribute("aria-disabled") === "true"){
+    buzz();
+    if (!checkBase()){ openSettings(); toast("Prima serve l'indirizzo della pagina."); }
+    else toast(el("action-hint").textContent);
+    return;
+  }
+  buzz();
+  const dl = detailLine();
+  el("sent-sentence").textContent = el("sentence").textContent;
+  el("sent-sub").hidden = !dl; el("sent-sub").textContent = dl;
+  el("sent-confirm").textContent =
+    `${setup.size} persone vedono la richiesta. Chi se la prende te lo scrive nel gruppo.`;
+  share(message(), myShots().map(x => x.file)).then(res => {
+    if (res === "cancelled") return;
+    if (res === "text-only" && myShots().length)
+      toast("Le foto vanno allegate a mano nel gruppo: da qui non partono.");
+    store.del(KEY_DRAFT);
+    go("sent", "Richiesta mandata nel gruppo.");
+  });
+};
+
+el("btn-resend").onclick = () => { buzz(); share(message(), myShots().map(x => x.file)); };
+el("btn-copy").onclick   = () => { buzz(); copy(linkFor(), "Link copiato."); };
+el("btn-edit").onclick   = () => { buzz(); go("compose"); };
+el("btn-reset").onclick  = () => {
+  buzz();
+  clearShots();
+  draft = { task:null, lists:{}, texts:{}, when:null, day:"", words:"", shots:{} };
+  el("f-words").value = ""; el("f-day").value = "";
+  el("d-photo").hidden = true;
+  el("d-value").value = ""; el("d-draft").value = "";
+  el("day-wrap").hidden = true; el("detail").hidden = true;
+  Array.from(el("tiles").children).forEach(x => {
+    x.setAttribute("aria-pressed","false"); x.querySelector(".tick").hidden = true;
+  });
+  Array.from(el("whens").children).forEach(x => x.setAttribute("aria-pressed","false"));
+  store.del(KEY_DRAFT);
+  refresh(); go("compose", "Nuova richiesta.");
+};
+
+function openSettings(){
+  buzz();
+  el("f-base").value  = setup.base;
+  el("f-name").value  = setup.name;
+  el("f-place").value = setup.place;
+  el("f-size").value  = setup.size;
+  el("f-cond").value  = setup.conditions;
+  paintBaseState();
+  go("settings");
+}
+el("btn-settings").onclick = openSettings;
+
+function paintBaseState(){
+  const n = normalizeBase(el("f-base").value);
+  el("base-state").textContent = n ? "Va bene: " + n : "Indirizzo non valido.";
+}
+el("f-base").addEventListener("input", paintBaseState);
+
+el("btn-save").onclick = () => {
+  buzz();
+  const base = normalizeBase(el("f-base").value);
+  setup = {
+    name: el("f-name").value.trim() || "—",
+    place: el("f-place").value.trim(),
+    size: Math.max(1, Math.min(20, parseInt(el("f-size").value, 10) || 4)),
+    conditions: el("f-cond").value.trim(),
+    base: base
+  };
+  store.set(KEY_SETUP, setup);
+  paintHeader(true); refresh();
+  go("compose", "Impostazioni salvate.");
+  toast(base ? "Salvato su questo telefono." : "Salvato, ma l'indirizzo non è valido.");
+};
+
+/* ========================== 6 · CHI RICEVE ========================== */
+function paintTask(t){
+  el("avatar").textContent = (t.n || "?").charAt(0).toUpperCase();
+  el("who").textContent = t.n || "—";
+  el("meta").textContent = t.p || "";
+  el("count").hidden = true;
+  document.title = `${t.n} — ${t.t}`;
+
+  el("t-eyebrow").textContent = t.w || "Quando puoi";
+  el("t-icon").innerHTML = svg(t.k);
+  el("t-title").textContent = t.t;
+  el("t-when").textContent = t.w || "";
+  el("t-dur").textContent = t.d || "";
+  el("t-dur").hidden = !t.d;
+
+  const hasList = Array.isArray(t.l) && t.l.length > 0;
+
+  // Prima del sì la lista è informativa: caselle vuote sembrerebbero un compito già iniziato.
+  el("t-list").hidden = !hasList;
+  if (hasList){
+    el("t-list-label").textContent = t.ll || "Da prendere";
+    el("t-items").innerHTML = t.l.map(x =>
+      `<div class="item"><span class="dot" aria-hidden="true"></span>
+         <span class="txt">${esc(x)}</span></div>`).join("");
+  }
+
+  // Il dettaglio operativo NON va nel riquadro delle sue parole: sono due voci diverse.
+  el("t-info").hidden = !t.x;
+  el("t-info").textContent = t.x || "";
+
+  // Le immagini non stanno nel link: stanno nel gruppo, sopra il messaggio.
+  el("t-attach").hidden = !t.f;
+  if (t.f) el("t-attach").textContent = t.f === 1
+    ? "La foto è nel gruppo, insieme a questo messaggio."
+    : `Le ${t.f} foto sono nel gruppo, insieme a questo messaggio.`;
+
+  el("t-words").hidden = !t.m;
+  if (t.m){
+    el("t-words-text").textContent = "\u201C" + t.m + "\u201D";
+    el("t-words-from").textContent = t.n;
+  }
+
+  el("s-yes").textContent = (t.n || "Lei") + " lo sa.";
+  el("y-title").textContent = t.t;
+  el("y-when").textContent = t.w ? "· " + t.w : "";
+
+  el("y-list").hidden = !hasList;
+  if (hasList) renderTicks(t);
+}
+
+function tickKey(t){ return KEY_TICKS + b64([t.t, t.w, t.l]).slice(0, 40); }
+
+function renderTicks(t){
+  ticks = store.get(tickKey(t), {});
+  el("y-checks").innerHTML = t.l.map((x,i) =>
+    `<button class="check" type="button" data-i="${i}" aria-pressed="${!!ticks[i]}">
+       <span class="box" aria-hidden="true">✓</span><span class="txt">${esc(x)}</span></button>`).join("");
+  el("y-checks").querySelectorAll(".check").forEach(b => b.onclick = () => {
+    const i = b.dataset.i;
+    ticks[i] = !ticks[i];
+    b.setAttribute("aria-pressed", String(!!ticks[i]));
+    store.set(tickKey(t), ticks);
+    buzz();
+  });
+}
+
+el("btn-yes").onclick  = () => { buzz(); closeRing(); go("yes", "Hai preso il compito."); };
+el("btn-nope").onclick = () => { buzz(); go("no", "Va bene così."); };
+
+function tell(text, kicker, sub){
+  share(text);
+  el("k-bye").textContent = kicker;
+  el("s-bye").textContent = sub;
+  setTimeout(() => go("bye"), 400);
+}
+el("btn-tell").onclick = () =>
+  tell(`Ci penso io: ${task.t}${task.w ? " — " + task.w : ""}.`, "Grazie.", (task.n || "Lei") + " è a posto.");
+el("btn-tell-no").onclick = () =>
+  tell(`Stavolta non ce la faccio per "${task.t}". Riesce qualcun altro?`,
+       "Va bene così.", "Lo vede qualcun altro.");
+el("btn-yes-bye").onclick = () => {
+  buzz(); el("k-bye").textContent = "Perfetto.";
+  el("s-bye").textContent = (task.n || "Lei") + " è a posto."; go("bye");
+};
+el("btn-no-bye").onclick = () => {
+  buzz(); el("k-bye").textContent = "A presto."; el("s-bye").textContent = ""; go("bye");
+};
+
+/* ========================== 7 · ROUTER ========================== */
+function readToken(){
+  const q = new URLSearchParams(location.search).get("t");
+  if (q) return { tok:q, extra:new URLSearchParams(location.search).get("m") || "" };
+  const h = location.hash || "";
+  if (h.startsWith("#/t/")) return { tok:h.slice(4), extra:"" };
+  return null;
+}
+
+function route(){
+  const found = readToken();
+
+  if (found){
+    try {
+      task = unpack(found.tok);
+      if (found.extra) task.m = found.extra;
+      if (!task || !task.t) throw new Error("vuoto");
+      paintTask(task);
+      go("task");
+    } catch {
+      document.body.classList.add("receiving");
+      el("k-bye").textContent = "Questo link non si apre.";
+      el("s-bye").textContent = "Chiedi a chi te l'ha mandato di rifarlo.";
+      go("bye");
+    }
+    return;
+  }
+
+  paintHeader(true);
+  refresh();
+  go("compose");
+}
+window.addEventListener("hashchange", route);
+
+/* ========================== 8 · AVVIO ========================== */
+buildComposer();
+if (!readToken()) restoreDraft();
+route();
+</script>
+</body>
+</html>
