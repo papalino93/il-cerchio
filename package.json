@@ -1,0 +1,23 @@
+{
+  "name": "il-cerchio",
+  "version": "1.0.0",
+  "description": "Il Cerchio - Task management application",
+  "private": true,
+  "scripts": {
+    "test": "echo \"No tests specified\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/papalino93/il-cerchio.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/papalino93/il-cerchio/issues"
+  },
+  "homepage": "https://github.com/papalino93/il-cerchio#readme",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
