@@ -326,6 +326,20 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
 .attach{ margin-top:18px; padding:14px 16px; background:var(--paper);
   border:1px dashed var(--line-firm); border-radius:12px;
   font-size:16px; line-height:1.45; color:var(--ink-soft); }
+
+/* ---------------- lingua / caffè ---------------- */
+.lang-switch{ flex:none; min-width:40px; height:34px; padding:0 12px; border-radius:999px;
+  border:1px solid var(--line-firm); background:var(--card); color:var(--ink-soft);
+  font-size:13px; font-weight:600; letter-spacing:.03em; }
+.lang-switch:active{ transform:scale(.96); }
+.lang-pair{ display:flex; gap:8px; }
+.lang-pair button{ flex:1 1 0; min-height:44px; border-radius:10px;
+  background:var(--card); border:1px solid var(--line-firm); color:var(--ink-soft);
+  font-size:15px; font-weight:600; }
+.lang-pair button[aria-pressed="true"]{ background:var(--green); color:var(--on-green); border-color:var(--green); }
+.coffee-btn{ margin-top:14px; text-decoration:none; }
+.coffee-btn svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.7;
+  stroke-linecap:round; stroke-linejoin:round; }
 </style>
 </head>
 <body>
@@ -349,6 +363,7 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
       <span class="stack" aria-hidden="true"><i></i><i></i><i></i></span>
       <span id="count-label"></span>
     </div>
+    <button class="lang-switch" id="lang-switch" type="button">EN</button>
   </header>
 
   <main id="main">
@@ -359,16 +374,16 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
       <div class="view" id="v-compose" hidden>
 
         <div class="warn" id="warn" hidden>
-          <b>Manca l'indirizzo della pagina</b>
+          <b data-i18n="warnTitle">Manca l'indirizzo della pagina</b>
           <p id="warn-text"></p>
-          <button type="button" id="warn-go">Aprire le impostazioni</button>
+          <button type="button" id="warn-go" data-i18n="warnBtn">Aprire le impostazioni</button>
         </div>
 
         <div class="block">
           <div>
-            <p class="eyebrow">Cosa serve</p>
-            <h2 class="step" id="s1" tabindex="-1">Scegli il compito</h2>
-            <p class="hint">Descrivi cosa va fatto, non quello che lei non riesce più a fare.</p>
+            <p class="eyebrow" data-i18n="step1Eyebrow">Cosa serve</p>
+            <h2 class="step" id="s1" tabindex="-1" data-i18n="step1Title">Scegli il compito</h2>
+            <p class="hint" data-i18n="step1Hint">Descrivi cosa va fatto, non quello che lei non riesce più a fare.</p>
           </div>
           <div class="grid" id="tiles" role="group" aria-labelledby="s1"></div>
 
@@ -380,9 +395,9 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
               <div class="row" style="margin-top:8px">
                 <input class="input" id="d-draft" autocomplete="off" autocapitalize="sentences"
                        enterkeyhint="done" maxlength="80" aria-label="Aggiungi alla lista">
-                <button class="add" id="d-add" type="button">Aggiungi</button>
+                <button class="add" id="d-add" type="button" data-i18n="addItemBtn">Aggiungi</button>
               </div>
-              <p class="micro" style="margin-top:8px">
+              <p class="micro" style="margin-top:8px" data-i18n="addItemHint">
                 Invio per aggiungere. Chi risponde vede la lista e può spuntarla mentre è lì.
               </p>
             </div>
@@ -404,98 +419,114 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
 
         <div class="block">
           <div>
-            <p class="eyebrow">Quando</p>
-            <h2 class="step" id="s2">Un momento indicativo</h2>
-            <p class="hint">Chi risponde si accorda direttamente con <span id="s2-name">Elena</span>.</p>
+            <p class="eyebrow" data-i18n="step2Eyebrow">Quando</p>
+            <h2 class="step" id="s2" data-i18n="step2Title">Un momento indicativo</h2>
+            <p class="hint" id="s2-hint">Chi risponde si accorda direttamente con Elena.</p>
           </div>
           <div class="chips" id="whens" role="group" aria-labelledby="s2"></div>
           <div id="day-wrap" hidden>
-            <label class="lbl" for="f-day">Che giorno</label>
+            <label class="lbl" for="f-day" data-i18n="dayLabel">Che giorno</label>
             <input class="input" id="f-day" type="date" style="max-width:260px;margin-top:7px">
           </div>
         </div>
 
         <div class="block">
           <div>
-            <p class="eyebrow">Facoltativo</p>
-            <h2 class="step" id="s3">Le sue parole</h2>
-            <p class="hint">
+            <p class="eyebrow" data-i18n="step3Eyebrow">Facoltativo</p>
+            <h2 class="step" id="s3" data-i18n="step3Title">Le sue parole</h2>
+            <p class="hint" data-i18n="step3Hint">
               Se te l'ha detto lei, scrivilo com'era. Chi legge riconosce sua nonna,
               non un incarico.
             </p>
           </div>
           <textarea class="input" id="f-words" rows="2" aria-labelledby="s3"
+            data-i18n-ph="wordsPlaceholder"
             placeholder="La lista è sul frigo, ho scritto grosso così si legge."></textarea>
         </div>
 
         <div class="send-box">
           <div>
-            <p class="eyebrow" style="margin-bottom:8px">Il messaggio nel gruppo</p>
+            <p class="eyebrow" style="margin-bottom:8px" data-i18n="msgEyebrow">Il messaggio nel gruppo</p>
             <p class="sentence" id="sentence"></p>
             <p class="sentence-sub" id="sentence-sub" hidden></p>
           </div>
           <button class="btn primary" id="btn-send" aria-disabled="true">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2-6-8-2z"/></svg>
-            Manda nel gruppo
+            <span data-i18n="sendBtn">Manda nel gruppo</span>
           </button>
           <p class="action-hint" id="action-hint" aria-live="polite"></p>
         </div>
 
-        <p class="settings-link"><button id="btn-settings" type="button">Impostazioni</button></p>
+        <p class="settings-link"><button id="btn-settings" type="button" data-i18n="settingsLink">Impostazioni</button></p>
       </div>
 
       <div class="view" id="v-sent" hidden>
         <div class="sent-box">
           <div class="seal" aria-hidden="true">✓</div>
-          <h2 class="sealed" id="k-sent" tabindex="-1">È nel cerchio</h2>
+          <h2 class="sealed" id="k-sent" tabindex="-1" data-i18n="sentTitle">È nel cerchio</h2>
           <p class="sentence" id="sent-sentence"></p>
           <p class="sentence-sub" id="sent-sub" hidden></p>
           <p class="hint" id="sent-confirm"></p>
           <div class="pills">
-            <button class="pill" id="btn-resend" type="button">Rimanda il messaggio</button>
-            <button class="pill" id="btn-copy" type="button">Copia il link</button>
-            <button class="pill" id="btn-edit" type="button">Modifica</button>
-            <button class="pill bare" id="btn-reset" type="button">Nuova richiesta</button>
+            <button class="pill" id="btn-resend" type="button" data-i18n="resend">Rimanda il messaggio</button>
+            <button class="pill" id="btn-copy" type="button" data-i18n="copyLink">Copia il link</button>
+            <button class="pill" id="btn-edit" type="button" data-i18n="editBtn">Modifica</button>
+            <button class="pill bare" id="btn-reset" type="button" data-i18n="newRequest">Nuova richiesta</button>
           </div>
         </div>
       </div>
 
       <div class="view" id="v-settings" hidden>
-        <h2 class="step" id="k-set" tabindex="-1" style="margin-top:0">Impostazioni</h2>
-        <p class="hint" style="margin-top:6px">Restano su questo telefono. Non escono da qui.</p>
+        <h2 class="step" id="k-set" tabindex="-1" style="margin-top:0" data-i18n="settingsTitle">Impostazioni</h2>
+        <p class="hint" style="margin-top:6px" data-i18n="settingsHint">Restano su questo telefono. Non escono da qui.</p>
 
         <div class="block" style="margin-top:24px">
           <div>
-            <label class="lbl" for="f-base">Indirizzo di questa pagina</label>
-            <p class="micro" style="margin:5px 0 7px">
+            <label class="lbl" for="f-base" data-i18n="baseLabel">Indirizzo di questa pagina</label>
+            <p class="micro" style="margin:5px 0 7px" data-i18n="baseHint">
               Serve a costruire i link da mandare. Deve iniziare per https://
             </p>
             <input class="input" id="f-base" autocomplete="off" inputmode="url"
+                   data-i18n-ph="basePlaceholder"
                    placeholder="https://ilcerchio.netlify.app/">
             <p class="micro" id="base-state" style="margin-top:7px"></p>
           </div>
           <div>
-            <label class="lbl" for="f-name">Come si chiama</label>
+            <label class="lbl" for="f-name" data-i18n="nameLabel">Come si chiama</label>
             <input class="input" id="f-name" style="margin-top:7px" autocomplete="off">
           </div>
           <div>
-            <label class="lbl" for="f-place">Dove abita</label>
+            <label class="lbl" for="f-place" data-i18n="placeLabel">Dove abita</label>
             <input class="input" id="f-place" style="margin-top:7px" autocomplete="off">
           </div>
           <div>
-            <label class="lbl" for="f-size">Quante persone nel cerchio</label>
+            <label class="lbl" for="f-size" data-i18n="sizeLabel">Quante persone nel cerchio</label>
             <input class="input" id="f-size" type="number" min="1" max="20" inputmode="numeric"
                    style="margin-top:7px;max-width:140px">
           </div>
           <div>
-            <label class="lbl" for="f-cond">Cosa preferisce fare da sé</label>
-            <p class="micro" style="margin:5px 0 7px">
+            <label class="lbl" for="f-cond" data-i18n="condLabel">Cosa preferisce fare da sé</label>
+            <p class="micro" style="margin:5px 0 7px" data-i18n="condHint">
               Serve a te, non viene mandato a nessuno. Chiediglielo, non deciderlo tu.
             </p>
             <textarea class="input" id="f-cond" rows="3"
+              data-i18n-ph="condPlaceholder"
               placeholder="Cucina da sola. In camera entra solo Anna. Non vuole aiuto in bagno."></textarea>
           </div>
-          <button class="btn primary" id="btn-save" style="margin-top:6px">Salva</button>
+          <button class="btn primary" id="btn-save" style="margin-top:6px" data-i18n="saveBtn">Salva</button>
+
+          <div style="margin-top:8px">
+            <label class="lbl" data-i18n="langLabel">Lingua</label>
+            <div class="lang-pair" id="lang-pair" role="group" style="margin-top:7px">
+              <button type="button" data-lang="it" aria-pressed="false">Italiano</button>
+              <button type="button" data-lang="en" aria-pressed="false">English</button>
+            </div>
+          </div>
+
+          <a class="btn ghost coffee-btn" id="btn-coffee" href="#" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 9h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M8 3c-.5 1 .5 1.5 0 3M12 3c-.5 1 .5 1.5 0 3"/></svg>
+            <span data-i18n="coffeeBtn">Offrimi un caffè</span>
+          </a>
         </div>
       </div>
     </section>
@@ -526,9 +557,9 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
         </article>
 
         <div class="stack-actions">
-          <button class="btn primary" id="btn-yes" aria-describedby="reassure">Ci penso io</button>
-          <button class="btn ghost" id="btn-nope">Non riesco stavolta</button>
-          <p class="reassure" id="reassure">Se non riesci va bene.<br>Lo vede qualcun altro.</p>
+          <button class="btn primary" id="btn-yes" aria-describedby="reassure" data-i18n="yesBtn">Ci penso io</button>
+          <button class="btn ghost" id="btn-nope" data-i18n="nopeBtn">Non riesco stavolta</button>
+          <p class="reassure" id="reassure" data-i18n-html="reassure">Se non riesci va bene.<br>Lo vede qualcun altro.</p>
         </div>
       </div>
 
@@ -538,29 +569,29 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
         <p class="recap"><b id="y-title"></b> <span id="y-when"></span></p>
 
         <div id="y-list" hidden style="margin-top:24px">
-          <p class="section-lbl">Da prendere</p>
+          <p class="section-lbl" data-i18n="listLabelFallback">Da prendere</p>
           <div class="checklist" id="y-checks"></div>
-          <p class="micro" style="margin-top:10px">Spunta mentre sei lì. Resta su questo telefono.</p>
+          <p class="micro" style="margin-top:10px" data-i18n="yListHint">Spunta mentre sei lì. Resta su questo telefono.</p>
         </div>
 
-        <p class="after">Manca un passaggio: dillo nel gruppo, così gli altri non ci pensano più.</p>
+        <p class="after" data-i18n="afterYes">Manca un passaggio: dillo nel gruppo, così gli altri non ci pensano più.</p>
 
         <div class="stack-actions">
           <button class="btn primary" id="btn-tell">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2-6-8-2z"/></svg>
-            Dillo nel gruppo
+            <span data-i18n="tellBtn">Dillo nel gruppo</span>
           </button>
-          <button class="btn quiet" id="btn-yes-bye">Ho già scritto, grazie</button>
+          <button class="btn quiet" id="btn-yes-bye" data-i18n="yesByeBtn">Ho già scritto, grazie</button>
         </div>
       </div>
 
       <div class="view" id="v-no" hidden>
-        <h1 class="kicker" id="k-no" tabindex="-1">Nessun problema.</h1>
-        <p class="kicker-sub">Lo vede qualcun altro.</p>
-        <p class="after">Se vuoi, scrivilo nel gruppo: chi legge sa che deve pensarci lui.</p>
+        <h1 class="kicker" id="k-no" tabindex="-1" data-i18n="noTitle">Nessun problema.</h1>
+        <p class="kicker-sub" data-i18n="noSub">Lo vede qualcun altro.</p>
+        <p class="after" data-i18n="afterNo">Se vuoi, scrivilo nel gruppo: chi legge sa che deve pensarci lui.</p>
         <div class="stack-actions">
-          <button class="btn ghost" id="btn-tell-no">Scrivilo nel gruppo</button>
-          <button class="btn quiet" id="btn-no-bye">Va bene così</button>
+          <button class="btn ghost" id="btn-tell-no" data-i18n="tellNoBtn">Scrivilo nel gruppo</button>
+          <button class="btn quiet" id="btn-no-bye" data-i18n="noByeBtn">Va bene così</button>
         </div>
       </div>
 
@@ -594,47 +625,277 @@ const ICONS = {
 };
 const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ICONS.altro}</svg>`;
 
-/* ========================== 2 · COMPITI ========================== */
-const TASKS = [
-  { id:"spesa",       icon:"spesa",       t:"Fare la spesa",               h:"buste pesanti",             p:"fare la spesa",                            d:"circa 45 minuti" },
-  { id:"medicine",    icon:"medicine",    t:"Ritirare le medicine",        h:"in farmacia",               p:"ritirare le medicine in farmacia",         d:"circa 20 minuti" },
-  { id:"visita",      icon:"visita",      t:"Accompagnare a una visita",   h:"in macchina",               p:"andare a una visita in macchina",          d:"attesa inclusa" },
-  { id:"casa",        icon:"casa",        t:"Dare una mano in casa",       h:"le cose in alto",           p:"una mano in casa",                         d:"circa un'ora" },
-  { id:"pasto",       icon:"pasto",       t:"Portare o cucinare un pasto", h:"anche una porzione in più", p:"un pasto",                                 d:"" },
-  { id:"commissione", icon:"commissione", t:"Fare una commissione",        h:"posta, banca, bollette",    p:"una commissione: posta, banca o bollette", d:"circa 30 minuti" },
-  { id:"compagnia",   icon:"compagnia",   t:"Passare a trovarla",          h:"non serve un motivo",       p:"un po' di compagnia",                      d:"il tempo che hai" },
-  { id:"altro",       icon:"altro",       t:"Altro",                       h:"scrivi tu",                 p:"",                                         d:"" }
-];
-const WHENS = [
-  { id:"oggi", label:"Oggi", p:"oggi" },
-  { id:"domani", label:"Domani", p:"domani" },
-  { id:"settimana", label:"Questa settimana", p:"in settimana" },
-  { id:"ricorrente", label:"Ogni settimana", p:"ogni settimana" },
-  { id:"giorno", label:"Scegli il giorno", p:"" }
-];
-const DETAILS = {
-  spesa:       { kind:"list", label:"La lista della spesa", ph:"es. 2 litri di latte",
-                 photo:"Foto della lista scritta a mano",
-                 photoNote:"Se te l'ha scritta lei, fotografala: si legge meglio dell'originale ricopiato." },
-  medicine:    { kind:"list", label:"Cosa ritirare", ph:"es. Cardioaspirina",
-                 note:"Non serve scrivere perché le prende.",
-                 photo:"Foto della ricetta e della tessera sanitaria",
-                 photoNote:"In farmacia servono entrambe. Partono nel gruppo insieme al messaggio, non dentro il link." },
-  commissione: { kind:"list", label:"Le commissioni", ph:"es. pagare la bolletta della luce",
-                 photo:"Foto del bollettino o del documento",
-                 photoNote:"Serve allo sportello per pagamenti e pratiche." },
-  visita:      { kind:"text", label:"Dove e a che ora", ph:"es. Careggi, radiologia, ore 10",
-                 note:"Serve anche il ritorno? Scrivilo qui.",
-                 photo:"Foto dell'impegnativa o del promemoria", photoNote:"Facoltativa." },
-  casa:        { kind:"text", label:"Cosa c'è da fare", ph:"es. cambiare la lampadina in cucina",
-                 note:"Una cosa per volta funziona meglio.",
-                 photo:"Foto di cosa serve", photoNote:"Una foto spiega meglio di tre righe." },
-  pasto:       { kind:"text", label:"Cosa le farebbe piacere", ph:"es. una minestra, poco sale",
-                 note:"Cose da evitare: scrivile qui." },
-  compagnia:   { kind:"text", label:"Qualcosa da sapere", ph:"es. le piace parlare di giardinaggio",
-                 note:"Facoltativo." },
-  altro:       { kind:"text", label:"Di cosa si tratta", ph:"es. cambiare una lampadina in cucina",
-                 note:"Basta una frase." }
+/* ========================== 2 · COMPITI (i18n) ========================== */
+/* Metti qui il tuo link (Buy Me a Coffee, Ko-fi, PayPal.me...) per attivare il pulsante. */
+const COFFEE_URL = "";
+
+const I18N = {
+it: { code:"it", toggleLabel:"EN", locale:"it-IT",
+  ui:{
+    warnTitle:"Manca l'indirizzo della pagina", warnBtn:"Aprire le impostazioni",
+    step1Eyebrow:"Cosa serve", step1Title:"Scegli il compito",
+    step1Hint:"Descrivi cosa va fatto, non quello che lei non riesce più a fare.",
+    addItemBtn:"Aggiungi",
+    addItemHint:"Invio per aggiungere. Chi risponde vede la lista e può spuntarla mentre è lì.",
+    step2Eyebrow:"Quando", step2Title:"Un momento indicativo", dayLabel:"Che giorno",
+    step3Eyebrow:"Facoltativo", step3Title:"Le sue parole",
+    step3Hint:"Se te l'ha detto lei, scrivilo com'era. Chi legge riconosce sua nonna, non un incarico.",
+    wordsPlaceholder:"La lista è sul frigo, ho scritto grosso così si legge.",
+    msgEyebrow:"Il messaggio nel gruppo", sendBtn:"Manda nel gruppo", settingsLink:"Impostazioni",
+    sentTitle:"È nel cerchio", resend:"Rimanda il messaggio", copyLink:"Copia il link",
+    editBtn:"Modifica", newRequest:"Nuova richiesta", coffeeBtn:"Offrimi un caffè",
+    settingsTitle:"Impostazioni", settingsHint:"Restano su questo telefono. Non escono da qui.",
+    baseLabel:"Indirizzo di questa pagina",
+    baseHint:"Serve a costruire i link da mandare. Deve iniziare per https://",
+    basePlaceholder:"https://ilcerchio.netlify.app/",
+    nameLabel:"Come si chiama", placeLabel:"Dove abita",
+    sizeLabel:"Quante persone nel cerchio", condLabel:"Cosa preferisce fare da sé",
+    condHint:"Serve a te, non viene mandato a nessuno. Chiediglielo, non deciderlo tu.",
+    condPlaceholder:"Cucina da sola. In camera entra solo Anna. Non vuole aiuto in bagno.",
+    saveBtn:"Salva", langLabel:"Lingua", langSwitchAria:"Cambia lingua",
+    taskEyebrowFallback:"Quando puoi", listLabelFallback:"Da prendere",
+    yesBtn:"Ci penso io", nopeBtn:"Non riesco stavolta",
+    reassure:"Se non riesci va bene.<br>Lo vede qualcun altro.",
+    yListHint:"Spunta mentre sei lì. Resta su questo telefono.",
+    afterYes:"Manca un passaggio: dillo nel gruppo, così gli altri non ci pensano più.",
+    tellBtn:"Dillo nel gruppo", yesByeBtn:"Ho già scritto, grazie",
+    noTitle:"Nessun problema.", noSub:"Lo vede qualcun altro.",
+    afterNo:"Se vuoi, scrivilo nel gruppo: chi legge sa che deve pensarci lui.",
+    tellNoBtn:"Scrivilo nel gruppo", noByeBtn:"Va bene così"
+  },
+  tasks:[
+    { id:"spesa",       icon:"spesa",       t:"Fare la spesa",               h:"buste pesanti",             p:"fare la spesa",                            d:"circa 45 minuti" },
+    { id:"medicine",    icon:"medicine",    t:"Ritirare le medicine",        h:"in farmacia",               p:"ritirare le medicine in farmacia",         d:"circa 20 minuti" },
+    { id:"visita",      icon:"visita",      t:"Accompagnare a una visita",   h:"in macchina",               p:"andare a una visita in macchina",          d:"attesa inclusa" },
+    { id:"casa",        icon:"casa",        t:"Dare una mano in casa",       h:"le cose in alto",           p:"una mano in casa",                         d:"circa un'ora" },
+    { id:"pasto",       icon:"pasto",       t:"Portare o cucinare un pasto", h:"anche una porzione in più", p:"un pasto",                                 d:"" },
+    { id:"commissione", icon:"commissione", t:"Fare una commissione",        h:"posta, banca, bollette",    p:"una commissione: posta, banca o bollette", d:"circa 30 minuti" },
+    { id:"compagnia",   icon:"compagnia",   t:"Passare a trovarla",          h:"non serve un motivo",       p:"un po' di compagnia",                      d:"il tempo che hai" },
+    { id:"altro",       icon:"altro",       t:"Altro",                       h:"scrivi tu",                 p:"",                                         d:"" }
+  ],
+  whens:[
+    { id:"oggi", label:"Oggi", p:"oggi" },
+    { id:"domani", label:"Domani", p:"domani" },
+    { id:"settimana", label:"Questa settimana", p:"in settimana" },
+    { id:"ricorrente", label:"Ogni settimana", p:"ogni settimana" },
+    { id:"giorno", label:"Scegli il giorno", p:"" }
+  ],
+  details:{
+    spesa:       { kind:"list", label:"La lista della spesa", ph:"es. 2 litri di latte",
+                   photo:"Foto della lista scritta a mano",
+                   photoNote:"Se te l'ha scritta lei, fotografala: si legge meglio dell'originale ricopiato." },
+    medicine:    { kind:"list", label:"Cosa ritirare", ph:"es. Cardioaspirina",
+                   note:"Non serve scrivere perché le prende.",
+                   photo:"Foto della ricetta e della tessera sanitaria",
+                   photoNote:"In farmacia servono entrambe. Partono nel gruppo insieme al messaggio, non dentro il link." },
+    commissione: { kind:"list", label:"Le commissioni", ph:"es. pagare la bolletta della luce",
+                   photo:"Foto del bollettino o del documento",
+                   photoNote:"Serve allo sportello per pagamenti e pratiche." },
+    visita:      { kind:"text", label:"Dove e a che ora", ph:"es. Careggi, radiologia, ore 10",
+                   note:"Serve anche il ritorno? Scrivilo qui.",
+                   photo:"Foto dell'impegnativa o del promemoria", photoNote:"Facoltativa." },
+    casa:        { kind:"text", label:"Cosa c'è da fare", ph:"es. cambiare la lampadina in cucina",
+                   note:"Una cosa per volta funziona meglio.",
+                   photo:"Foto di cosa serve", photoNote:"Una foto spiega meglio di tre righe." },
+    pasto:       { kind:"text", label:"Cosa le farebbe piacere", ph:"es. una minestra, poco sale",
+                   note:"Cose da evitare: scrivile qui." },
+    compagnia:   { kind:"text", label:"Qualcosa da sapere", ph:"es. le piace parlare di giardinaggio",
+                   note:"Facoltativo." },
+    altro:       { kind:"text", label:"Di cosa si tratta", ph:"es. cambiare una lampadina in cucina",
+                   note:"Basta una frase." }
+  },
+  tpl:{
+    countLabel: n => `${n} nel cerchio`,
+    step2Hint: name => `Chi risponde si accorda direttamente con ${name}.`,
+    sentenceReady: (name, tp, wp) => `${name} ha bisogno di una mano per ${tp}${wp ? ", " + wp : ""}.`,
+    sentencePending: name => `${name} ha bisogno di una mano per…`,
+    warnNoBaseDetected:"Non riesco a costruire i link. Incolla l'indirizzo del sito nelle impostazioni.",
+    warnNoBasePreview:"Stai aprendo la pagina in anteprima o da file locale, quindi il link nel messaggio non sarebbe cliccabile. Mettila online e incolla qui l'indirizzo.",
+    hintNoBase:"Manca l'indirizzo della pagina: senza, il link non si apre.",
+    hintNeedTask:"Scegli cosa serve per continuare.",
+    hintNeedTaskAltro:"Scrivi cosa serve per continuare.",
+    hintNeedWhen:"Aggiungi quando serve.",
+    hintNeedDay:"Scegli un giorno per continuare.",
+    hintLongList:"La lista è lunga: il link diventa un muro di caratteri. Meglio fotografarla.",
+    hintReady: (size, name) => `Lo vedono ${size} persone. Nessuna notifica a ${name}.`,
+    sentConfirm: size => `${size} persone vedono la richiesta. Chi se la prende te lo scrive nel gruppo.`,
+    attachOne:"La foto è nel gruppo, insieme a questo messaggio.",
+    attachMany: n => `Le ${n} foto sono nel gruppo, insieme a questo messaggio.`,
+    itemCount: n => `${n} ${n === 1 ? "cosa" : "cose"}`,
+    baseStateOk: n => `Va bene: ${n}`,
+    baseStateInvalid:"Indirizzo non valido.",
+    soLoSa: name => `${name || "Lei"} lo sa.`,
+    tellYesMsg: (title, when) => `Ci penso io: ${title}${when ? " — " + when : ""}.`,
+    tellYesKicker:"Grazie.",
+    tellYesSub: name => `${name || "Lei"} è a posto.`,
+    yesByeKicker:"Perfetto.",
+    tellNoMsg: title => `Stavolta non ce la faccio per "${title}". Riesce qualcun altro?`,
+    tellNoKicker:"Va bene così.", tellNoSub:"Lo vede qualcun altro.",
+    noByeKicker:"A presto.",
+    brokenLinkTitle:"Questo link non si apre.",
+    brokenLinkSub:"Chiedi a chi te l'ha mandato di rifarlo.",
+    msgLines: ({name, tp, wp, dl, nFoto, words}) => {
+      const lines = [`${name} ha bisogno di una mano per ${tp}${wp ? ", " + wp : ""}.`];
+      if (dl) lines.push("", dl);
+      if (nFoto) lines.push("", nFoto === 1 ? "La foto è qui sotto." : `Qui sotto trovi le ${nFoto} foto.`);
+      if (words) lines.push("", `"${words}"`, `— ${name}`);
+      lines.push("", "Se puoi prendertelo, apri qui:");
+      return lines;
+    },
+    msgTail:"Se non puoi, va bene lo stesso.",
+    toastVoceAccorciata:"Voce accorciata: tienile brevi.",
+    toastGiaLista:"C'è già nella lista.",
+    toastMaxFoto:"Massimo quattro foto.",
+    toastBozza:"Bozza ripresa. Le foto vanno riallegate.",
+    toastPrimaIndirizzo:"Prima serve l'indirizzo della pagina.",
+    toastSalvatoOk:"Salvato su questo telefono.",
+    toastSalvatoInvalid:"Salvato, ma l'indirizzo non è valido.",
+    announceImpostazioniSalvate:"Impostazioni salvate.",
+    announceNuovaRichiesta:"Nuova richiesta.",
+    announceHaiPreso:"Hai preso il compito.",
+    announceVaBene:"Va bene così.",
+    announceRichiestaMandata:"Richiesta mandata nel gruppo.",
+    toastFotoAMano:"Le foto vanno allegate a mano nel gruppo: da qui non partono.",
+    toastLinkCopiato:"Link copiato.",
+    toastMessaggioCopiato:"Messaggio copiato: incollalo in WhatsApp.",
+    toastCopiato:"Copiato.",
+    toastCopiaFallita:"Copia non riuscita: seleziona il testo a mano.",
+    toastCoffeeMissing:"Aggiungi il tuo link nel codice (COFFEE_URL) per attivare questo pulsante."
+  }
+},
+en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
+  ui:{
+    warnTitle:"The page address is missing", warnBtn:"Open settings",
+    step1Eyebrow:"What's needed", step1Title:"Choose the task",
+    step1Hint:"Describe what needs doing, not what she can no longer do.",
+    addItemBtn:"Add",
+    addItemHint:"Press enter to add. Whoever answers sees the list and can check it off while they're there.",
+    step2Eyebrow:"When", step2Title:"A rough time", dayLabel:"Which day",
+    step3Eyebrow:"Optional", step3Title:"Her own words",
+    step3Hint:"If she told you herself, write it as she said it. Whoever reads it will recognize their grandma, not a task.",
+    wordsPlaceholder:"The list is on the fridge, I wrote it big so it's easy to read.",
+    msgEyebrow:"The message in the group", sendBtn:"Send to the group", settingsLink:"Settings",
+    sentTitle:"It's in the circle", resend:"Resend the message", copyLink:"Copy the link",
+    editBtn:"Edit", newRequest:"New request", coffeeBtn:"Buy me a coffee",
+    settingsTitle:"Settings", settingsHint:"These stay on this phone. They don't leave here.",
+    baseLabel:"This page's address",
+    baseHint:"Used to build the links you send. Must start with https://",
+    basePlaceholder:"https://ilcerchio.netlify.app/",
+    nameLabel:"Her name", placeLabel:"Where she lives",
+    sizeLabel:"How many people in the circle", condLabel:"What she prefers to do herself",
+    condHint:"This is for you, it's never sent to anyone. Ask her, don't decide for her.",
+    condPlaceholder:"Cooks on her own. Only Anna comes into the bedroom. Doesn't want help in the bathroom.",
+    saveBtn:"Save", langLabel:"Language", langSwitchAria:"Change language",
+    taskEyebrowFallback:"Whenever you can", listLabelFallback:"To bring",
+    yesBtn:"I've got it", nopeBtn:"Can't this time",
+    reassure:"It's okay if you can't.<br>Someone else will see it.",
+    yListHint:"Check them off while you're there. Stays on this phone.",
+    afterYes:"One step left: say it in the group, so the others can stop thinking about it.",
+    tellBtn:"Say it in the group", yesByeBtn:"Already wrote it, thanks",
+    noTitle:"No problem.", noSub:"Someone else will see it.",
+    afterNo:"If you want, write it in the group: whoever reads it will know to take care of it.",
+    tellNoBtn:"Write it in the group", noByeBtn:"That's fine"
+  },
+  tasks:[
+    { id:"spesa",       icon:"spesa",       t:"Get the groceries",           h:"heavy bags",                p:"get the groceries",                        d:"about 45 minutes" },
+    { id:"medicine",    icon:"medicine",    t:"Pick up medicine",            h:"at the pharmacy",           p:"pick up the medicine at the pharmacy",     d:"about 20 minutes" },
+    { id:"visita",      icon:"visita",      t:"Take her to an appointment",  h:"by car",                    p:"go to an appointment by car",              d:"waiting included" },
+    { id:"casa",        icon:"casa",        t:"Help around the house",       h:"the high-up things",        p:"a hand around the house",                  d:"about an hour" },
+    { id:"pasto",       icon:"pasto",       t:"Bring or cook a meal",        h:"an extra portion helps too",p:"a meal",                                   d:"" },
+    { id:"commissione", icon:"commissione", t:"Run an errand",               h:"post office, bank, bills",  p:"an errand: post office, bank, or bills",   d:"about 30 minutes" },
+    { id:"compagnia",   icon:"compagnia",   t:"Stop by for a visit",         h:"no reason needed",          p:"a bit of company",                         d:"however long you have" },
+    { id:"altro",       icon:"altro",       t:"Something else",              h:"write it in",               p:"",                                         d:"" }
+  ],
+  whens:[
+    { id:"oggi", label:"Today", p:"today" },
+    { id:"domani", label:"Tomorrow", p:"tomorrow" },
+    { id:"settimana", label:"This week", p:"this week" },
+    { id:"ricorrente", label:"Every week", p:"every week" },
+    { id:"giorno", label:"Choose the day", p:"" }
+  ],
+  details:{
+    spesa:       { kind:"list", label:"The shopping list", ph:"e.g. 2 litres of milk",
+                   photo:"Photo of the handwritten list",
+                   photoNote:"If she wrote it herself, take a photo: it reads better than a copied-out version." },
+    medicine:    { kind:"list", label:"What to pick up", ph:"e.g. Aspirin",
+                   note:"No need to write why she's taking them.",
+                   photo:"Photo of the prescription and health card",
+                   photoNote:"Both are needed at the pharmacy. They go to the group along with the message, not inside the link." },
+    commissione: { kind:"list", label:"The errands", ph:"e.g. pay the electricity bill",
+                   photo:"Photo of the bill or document",
+                   photoNote:"Needed at the counter for payments and paperwork." },
+    visita:      { kind:"text", label:"Where and when", ph:"e.g. Careggi hospital, radiology, 10am",
+                   note:"Need a ride back too? Write it here.",
+                   photo:"Photo of the referral or reminder", photoNote:"Optional." },
+    casa:        { kind:"text", label:"What needs doing", ph:"e.g. change the lightbulb in the kitchen",
+                   note:"One thing at a time works best.",
+                   photo:"Photo of what's needed", photoNote:"A photo explains better than three lines." },
+    pasto:       { kind:"text", label:"What she'd enjoy", ph:"e.g. a soup, light on salt",
+                   note:"Things to avoid: write them here." },
+    compagnia:   { kind:"text", label:"Something to know", ph:"e.g. she likes talking about gardening",
+                   note:"Optional." },
+    altro:       { kind:"text", label:"What it's about", ph:"e.g. change a lightbulb in the kitchen",
+                   note:"One sentence is enough." }
+  },
+  tpl:{
+    countLabel: n => `${n} in the circle`,
+    step2Hint: name => `Whoever answers arranges it directly with ${name}.`,
+    sentenceReady: (name, tp, wp) => `${name} needs a hand with ${tp}${wp ? ", " + wp : ""}.`,
+    sentencePending: name => `${name} needs a hand with…`,
+    warnNoBaseDetected:"I can't build the links. Paste the site's address in settings.",
+    warnNoBasePreview:"You're opening this page in preview or from a local file, so the link in the message wouldn't be clickable. Put it online and paste the address here.",
+    hintNoBase:"The page address is missing: without it, the link won't open.",
+    hintNeedTask:"Choose what's needed to continue.",
+    hintNeedTaskAltro:"Write what's needed to continue.",
+    hintNeedWhen:"Add when it's needed.",
+    hintNeedDay:"Choose a day to continue.",
+    hintLongList:"The list is long: the link becomes a wall of characters. Better to photograph it.",
+    hintReady: (size, name) => `${size} people will see it. No notification to ${name}.`,
+    sentConfirm: size => `${size} people see the request. Whoever takes it will tell you in the group.`,
+    attachOne:"The photo is in the group, along with this message.",
+    attachMany: n => `The ${n} photos are in the group, along with this message.`,
+    itemCount: n => `${n} ${n === 1 ? "thing" : "things"}`,
+    baseStateOk: n => `Looks good: ${n}`,
+    baseStateInvalid:"Invalid address.",
+    soLoSa: name => `${name || "She"} knows.`,
+    tellYesMsg: (title, when) => `I've got it: ${title}${when ? " — " + when : ""}.`,
+    tellYesKicker:"Thanks.",
+    tellYesSub: name => `${name || "She"} is all set.`,
+    yesByeKicker:"Perfect.",
+    tellNoMsg: title => `I can't manage "${title}" this time. Can someone else?`,
+    tellNoKicker:"That's okay.", tellNoSub:"Someone else will see it.",
+    noByeKicker:"See you soon.",
+    brokenLinkTitle:"This link won't open.",
+    brokenLinkSub:"Ask whoever sent it to you to make it again.",
+    msgLines: ({name, tp, wp, dl, nFoto, words}) => {
+      const lines = [`${name} needs a hand with ${tp}${wp ? ", " + wp : ""}.`];
+      if (dl) lines.push("", dl);
+      if (nFoto) lines.push("", nFoto === 1 ? "The photo is right below." : `You'll find the ${nFoto} photos below.`);
+      if (words) lines.push("", `"${words}"`, `— ${name}`);
+      lines.push("", "If you can take it, open this:");
+      return lines;
+    },
+    msgTail:"If you can't, that's okay too.",
+    toastVoceAccorciata:"Item shortened: keep them brief.",
+    toastGiaLista:"Already on the list.",
+    toastMaxFoto:"Four photos maximum.",
+    toastBozza:"Draft restored. Photos need to be reattached.",
+    toastPrimaIndirizzo:"The page address is needed first.",
+    toastSalvatoOk:"Saved on this phone.",
+    toastSalvatoInvalid:"Saved, but the address isn't valid.",
+    announceImpostazioniSalvate:"Settings saved.",
+    announceNuovaRichiesta:"New request.",
+    announceHaiPreso:"You took the task.",
+    announceVaBene:"That's fine.",
+    announceRichiestaMandata:"Request sent to the group.",
+    toastFotoAMano:"Photos need to be attached by hand in the group: they don't go from here.",
+    toastLinkCopiato:"Link copied.",
+    toastMessaggioCopiato:"Message copied: paste it in WhatsApp.",
+    toastCopiato:"Copied.",
+    toastCopiaFallita:"Copy failed: select the text by hand.",
+    toastCoffeeMissing:"Add your link in the code (COFFEE_URL) to enable this button."
+  }
+}
 };
 
 /* ========================== 3 · STATO ========================== */
@@ -645,6 +906,17 @@ const store = {
   set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
   del(k){ try { localStorage.removeItem(k); } catch {} }
 };
+
+const KEY_LANG = "cerchio:lang";
+function defaultLang(){
+  const saved = store.get(KEY_LANG, null);
+  if (saved === "it" || saved === "en") return saved;
+  return (navigator.language || "it").toLowerCase().startsWith("it") ? "it" : "en";
+}
+let LANG = defaultLang();
+const S = () => I18N[LANG].ui;
+const TP = () => I18N[LANG].tpl;
+let TASKS = I18N[LANG].tasks, WHENS = I18N[LANG].whens, DETAILS = I18N[LANG].details;
 
 /* FIX v3 — l'origine va validata.
    In una preview in sandbox location.origin vale "null" e pathname "srcdoc":
@@ -707,12 +979,12 @@ const unb64 = s => JSON.parse(decodeURIComponent(escape(
 /* Le "sue parole" ora stanno dentro il payload codificato come tutto il
    resto. Prima viaggiavano in chiaro come &m=... : comparivano nella barra
    degli indirizzi e in qualsiasi anteprima del link. */
-function pack(p){ return b64([1, p.n, p.p, p.k, p.t, p.w, p.d, p.x, p.ll, p.l, p.m || "", p.f || 0]); }
+function pack(p){ return b64([1, p.n, p.p, p.k, p.t, p.w, p.d, p.x, p.ll, p.l, p.m || "", p.f || 0, p.g || "it"]); }
 function unpack(s){
   const a = unb64(s);
   if (Array.isArray(a)){
     return { n:a[1]||"", p:a[2]||"", k:a[3]||"altro", t:a[4]||"", w:a[5]||"",
-             d:a[6]||"", x:a[7]||"", ll:a[8]||"", l:a[9]||[], m:a[10]||"", f:a[11]||0 };
+             d:a[6]||"", x:a[7]||"", ll:a[8]||"", l:a[9]||[], m:a[10]||"", f:a[11]||0, g:a[12]||"it" };
   }
   return a; // retrocompatibilità con i link della v2
 }
@@ -775,23 +1047,64 @@ function paintHeader(showCount){
   el("avatar").textContent = (setup.name || "?").charAt(0).toUpperCase();
   el("who").textContent = setup.name || "—";
   el("meta").textContent = setup.place || "";
-  el("s2-name").textContent = setup.name || "lei";
+  el("s2-hint").textContent = TP().step2Hint(setup.name || (LANG === "it" ? "lei" : "her"));
   el("count").hidden = !showCount;
-  el("count-label").textContent = setup.size + " nel cerchio";
+  el("count-label").textContent = TP().countLabel(setup.size);
 }
 
 function checkBase(){
   const ok = !!normalizeBase(setup.base);
   el("warn").hidden = ok;
   if (!ok){
-    el("warn-text").textContent = detectBase()
-      ? "Non riesco a costruire i link. Incolla l'indirizzo del sito nelle impostazioni."
-      : "Stai aprendo la pagina in anteprima o da file locale, quindi il link nel messaggio non sarebbe cliccabile. Mettila online e incolla qui l'indirizzo.";
+    el("warn-text").textContent = detectBase() ? TP().warnNoBaseDetected : TP().warnNoBasePreview;
   }
   return ok;
 }
 
-function buildComposer(){
+/* ========================== 5b · LINGUA ========================== */
+function applyStaticI18n(){
+  const s = S();
+  document.querySelectorAll("[data-i18n]").forEach(n => {
+    const k = n.dataset.i18n; if (s[k] != null) n.textContent = s[k];
+  });
+  document.querySelectorAll("[data-i18n-html]").forEach(n => {
+    const k = n.dataset.i18nHtml; if (s[k] != null) n.innerHTML = s[k];
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(n => {
+    const k = n.dataset.i18nPh; if (s[k] != null) n.placeholder = s[k];
+  });
+  document.documentElement.lang = LANG;
+  el("lang-switch").textContent = I18N[LANG].toggleLabel;
+  el("lang-switch").setAttribute("aria-label", s.langSwitchAria);
+  el("lang-pair").querySelectorAll("button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.lang === LANG)));
+  el("btn-coffee").href = COFFEE_URL || "#";
+}
+
+function rerenderCurrentView(){
+  if (current === "compose"){ renderComposerLists(); paintDetail(); paintHeader(true); refresh(); }
+  else if (current === "settings"){ paintBaseState(); }
+  else if (task && (current === "task" || current === "yes")){ paintTask(task); }
+}
+
+function setLang(l, persist){
+  LANG = l;
+  if (persist) store.set(KEY_LANG, LANG);
+  TASKS = I18N[LANG].tasks; WHENS = I18N[LANG].whens; DETAILS = I18N[LANG].details;
+  applyStaticI18n();
+}
+function applyLang(l){ setLang(l, true); rerenderCurrentView(); }
+
+el("lang-switch").onclick = () => { buzz(); applyLang(LANG === "it" ? "en" : "it"); };
+el("lang-pair").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  buzz(); applyLang(b.dataset.lang);
+});
+el("btn-coffee").addEventListener("click", e => {
+  if (!COFFEE_URL){ e.preventDefault(); toast(TP().toastCoffeeMissing); }
+});
+
+function renderComposerLists(){
   el("tiles").innerHTML = TASKS.map(t =>
     `<button class="tile" type="button" data-id="${t.id}" aria-pressed="false">
        <span class="tile-head">${svg(t.icon)}<span class="tick" aria-hidden="true" hidden>✓</span></span>
@@ -800,6 +1113,18 @@ function buildComposer(){
 
   el("whens").innerHTML = WHENS.map(w =>
     `<button class="chip" type="button" data-id="${w.id}" aria-pressed="false">${esc(w.label)}</button>`).join("");
+
+  Array.from(el("tiles").children).forEach(x => {
+    const on = x.dataset.id === draft.task;
+    x.setAttribute("aria-pressed", String(on));
+    const tk = x.querySelector(".tick"); if (tk) tk.hidden = !on;
+  });
+  Array.from(el("whens").children).forEach(x =>
+    x.setAttribute("aria-pressed", String(x.dataset.id === draft.when)));
+}
+
+function buildComposer(){
+  renderComposerLists();
 
   el("tiles").addEventListener("click", e => {
     const b = e.target.closest(".tile"); if (!b) return;
@@ -843,13 +1168,13 @@ function addItem(){
   // caratteri diventa illeggibile sul telefono di chi la deve spuntare.
   if (v.length > MAX_VOCE){
     v = v.slice(0, MAX_VOCE).trim();
-    toast("Voce accorciata: tienile brevi.");
+    toast(TP().toastVoceAccorciata);
   }
 
   const gia = draft.lists[draft.task] = draft.lists[draft.task] || [];
   if (gia.some(x => x.toLowerCase() === v.toLowerCase())){
     el("d-draft").value = "";
-    toast("C'è già nella lista.");
+    toast(TP().toastGiaLista);
     return;
   }
 
@@ -871,7 +1196,7 @@ function addShots(files){
   const list = draft.shots[draft.task] || (draft.shots[draft.task] = []);
   for (const f of files){
     if (!f.type || !f.type.startsWith("image/")) continue;
-    if (list.length >= 4){ toast("Massimo quattro foto."); break; }
+    if (list.length >= 4){ toast(TP().toastMaxFoto); break; }
     list.push({ file:f, url:URL.createObjectURL(f) });
   }
   el("p-input").value = "";
@@ -913,19 +1238,18 @@ function paintDetail(){
 
   if (cfg.kind === "list"){
     const items = draft.lists[draft.task] || [];
-    el("d-meta").textContent = items.length
-      ? items.length + (items.length === 1 ? " cosa" : " cose") : "Facoltativo";
+    el("d-meta").textContent = items.length ? TP().itemCount(items.length) : (LANG === "it" ? "Facoltativo" : "Optional");
     el("d-items").innerHTML = items.map((x,i) =>
       `<div class="item"><span class="dot" aria-hidden="true"></span>
          <span class="txt">${esc(x)}</span>
-         <button class="rm" type="button" data-i="${i}" aria-label="Togli ${esc(x)}">×</button></div>`).join("");
+         <button class="rm" type="button" data-i="${i}" aria-label="${LANG === "it" ? "Togli" : "Remove"} ${esc(x)}">×</button></div>`).join("");
     el("d-items").querySelectorAll(".rm").forEach(b => b.onclick = () => {
       draft.lists[draft.task].splice(+b.dataset.i, 1);
       paintDetail(); refresh();
     });
     el("d-draft").placeholder = cfg.ph;
   } else {
-    el("d-meta").textContent = "Facoltativo";
+    el("d-meta").textContent = LANG === "it" ? "Facoltativo" : "Optional";
     el("d-value").value = draft.texts[draft.task] || "";
     el("d-value").placeholder = cfg.ph;
     el("d-note").textContent = cfg.note || "";
@@ -950,7 +1274,7 @@ function whenPhrase(){
     if (!draft.day) return null;
     const d = new Date(draft.day + "T12:00:00");
     if (isNaN(d.getTime())) return null;
-    return new Intl.DateTimeFormat("it-IT",
+    return new Intl.DateTimeFormat(I18N[LANG].locale,
       { weekday:"long", day:"numeric", month:"long", timeZone:"Europe/Rome" }).format(d);
   }
   return w.p;
@@ -973,7 +1297,8 @@ function payload(){
     ll: cfg.kind === "list" && (draft.lists[draft.task] || []).length ? cfg.label : "",
     x: cfg.kind === "text" && draft.task !== "altro" ? (draft.texts[draft.task] || "").trim() : "",
     m: draft.words.trim(),
-    f: myShots().length
+    f: myShots().length,
+    g: LANG
   };
 }
 
@@ -988,13 +1313,8 @@ function linkFor(){
 
 function message(){
   const p = payload(), tp = taskPhrase(), wp = whenPhrase(), dl = detailLine();
-  const lines = [`${p.n} ha bisogno di una mano per ${tp}${wp ? ", " + wp : ""}.`];
-  if (dl) lines.push("", dl);
-  const nFoto = myShots().length;
-  if (nFoto) lines.push("", nFoto === 1
-    ? "La foto è qui sotto." : `Qui sotto trovi le ${nFoto} foto.`);
-  if (p.m) lines.push("", `"${p.m}"`, `— ${p.n}`);
-  lines.push("", "Se puoi prendertelo, apri qui:", linkFor(), "", "Se non puoi, va bene lo stesso.");
+  const lines = TP().msgLines({ name:p.n, tp, wp, dl, nFoto:myShots().length, words:p.m });
+  lines.push(linkFor(), "", TP().msgTail);
   return lines.join("\n");
 }
 
@@ -1043,7 +1363,7 @@ function restoreDraft(){
   el("day-wrap").hidden = draft.when !== "giorno";
   paintDetail();
 
-  if (b.foto) toast("Bozza ripresa. Le foto vanno riallegate.");
+  if (b.foto) toast(TP().toastBozza);
   return true;
 }
 
@@ -1054,8 +1374,8 @@ function refresh(){
   const ready = !!tp && !!wp && baseOk;
 
   el("sentence").textContent = !tp
-    ? `${setup.name} ha bisogno di una mano per…`
-    : `${setup.name} ha bisogno di una mano per ${tp}${wp ? ", " + wp : ""}.`;
+    ? TP().sentencePending(setup.name)
+    : TP().sentenceReady(setup.name, tp, wp);
 
   const dl = detailLine();
   el("sentence-sub").hidden = !dl;
@@ -1063,14 +1383,14 @@ function refresh(){
 
   el("btn-send").setAttribute("aria-disabled", String(!ready));
   el("action-hint").textContent =
-    !baseOk ? "Manca l'indirizzo della pagina: senza, il link non si apre."
-    : !tp ? (draft.task === "altro" ? "Scrivi cosa serve per continuare." : "Scegli cosa serve per continuare.")
-    : !wp ? (draft.when === "giorno" ? "Scegli un giorno per continuare." : "Aggiungi quando serve.")
+    !baseOk ? TP().hintNoBase
+    : !tp ? (draft.task === "altro" ? TP().hintNeedTaskAltro : TP().hintNeedTask)
+    : !wp ? (draft.when === "giorno" ? TP().hintNeedDay : TP().hintNeedWhen)
     : linkFor().length > 700
       // Non è un limite tecnico: è che 700 caratteri di codice nel messaggio
       // sono sette righe illeggibili, e chi le riceve si insospettisce.
-      ? "La lista è lunga: il link diventa un muro di caratteri. Meglio fotografarla."
-      : `Lo vedono ${setup.size} persone. Nessuna notifica a ${setup.name}.`;
+      ? TP().hintLongList
+      : TP().hintReady(setup.size, setup.name);
 }
 
 /* Le foto viaggiano qui: navigator.share le passa a WhatsApp insieme al
@@ -1089,18 +1409,18 @@ async function share(text, files){
     }
   }
   const w = window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener");
-  if (!w) copy(text, "Messaggio copiato: incollalo in WhatsApp.");
+  if (!w) copy(text, TP().toastMessaggioCopiato);
   return files && files.length ? "text-only" : "opened";
 }
 
 async function copy(text, msg){
-  try { await navigator.clipboard.writeText(text); toast(msg || "Copiato."); }
+  try { await navigator.clipboard.writeText(text); toast(msg || TP().toastCopiato); }
   catch {
     const a = document.createElement("textarea");
     a.value = text; a.style.position = "fixed"; a.style.opacity = "0";
     document.body.appendChild(a); a.select();
-    try { document.execCommand("copy"); toast(msg || "Copiato."); }
-    catch { toast("Copia non riuscita: seleziona il testo a mano."); }
+    try { document.execCommand("copy"); toast(msg || TP().toastCopiato); }
+    catch { toast(TP().toastCopiaFallita); }
     a.remove();
   }
 }
@@ -1108,7 +1428,7 @@ async function copy(text, msg){
 el("btn-send").onclick = () => {
   if (el("btn-send").getAttribute("aria-disabled") === "true"){
     buzz();
-    if (!checkBase()){ openSettings(); toast("Prima serve l'indirizzo della pagina."); }
+    if (!checkBase()){ openSettings(); toast(TP().toastPrimaIndirizzo); }
     else toast(el("action-hint").textContent);
     return;
   }
@@ -1116,19 +1436,18 @@ el("btn-send").onclick = () => {
   const dl = detailLine();
   el("sent-sentence").textContent = el("sentence").textContent;
   el("sent-sub").hidden = !dl; el("sent-sub").textContent = dl;
-  el("sent-confirm").textContent =
-    `${setup.size} persone vedono la richiesta. Chi se la prende te lo scrive nel gruppo.`;
+  el("sent-confirm").textContent = TP().sentConfirm(setup.size);
   share(message(), myShots().map(x => x.file)).then(res => {
     if (res === "cancelled") return;
     if (res === "text-only" && myShots().length)
-      toast("Le foto vanno allegate a mano nel gruppo: da qui non partono.");
+      toast(TP().toastFotoAMano);
     store.del(KEY_DRAFT);
-    go("sent", "Richiesta mandata nel gruppo.");
+    go("sent", TP().announceRichiestaMandata);
   });
 };
 
 el("btn-resend").onclick = () => { buzz(); share(message(), myShots().map(x => x.file)); };
-el("btn-copy").onclick   = () => { buzz(); copy(linkFor(), "Link copiato."); };
+el("btn-copy").onclick   = () => { buzz(); copy(linkFor(), TP().toastLinkCopiato); };
 el("btn-edit").onclick   = () => { buzz(); go("compose"); };
 el("btn-reset").onclick  = () => {
   buzz();
@@ -1143,7 +1462,7 @@ el("btn-reset").onclick  = () => {
   });
   Array.from(el("whens").children).forEach(x => x.setAttribute("aria-pressed","false"));
   store.del(KEY_DRAFT);
-  refresh(); go("compose", "Nuova richiesta.");
+  refresh(); go("compose", TP().announceNuovaRichiesta);
 };
 
 function openSettings(){
@@ -1160,7 +1479,7 @@ el("btn-settings").onclick = openSettings;
 
 function paintBaseState(){
   const n = normalizeBase(el("f-base").value);
-  el("base-state").textContent = n ? "Va bene: " + n : "Indirizzo non valido.";
+  el("base-state").textContent = n ? TP().baseStateOk(n) : TP().baseStateInvalid;
 }
 el("f-base").addEventListener("input", paintBaseState);
 
@@ -1176,8 +1495,8 @@ el("btn-save").onclick = () => {
   };
   store.set(KEY_SETUP, setup);
   paintHeader(true); refresh();
-  go("compose", "Impostazioni salvate.");
-  toast(base ? "Salvato su questo telefono." : "Salvato, ma l'indirizzo non è valido.");
+  go("compose", TP().announceImpostazioniSalvate);
+  toast(base ? TP().toastSalvatoOk : TP().toastSalvatoInvalid);
 };
 
 /* ========================== 6 · CHI RICEVE ========================== */
@@ -1188,7 +1507,7 @@ function paintTask(t){
   el("count").hidden = true;
   document.title = `${t.n} — ${t.t}`;
 
-  el("t-eyebrow").textContent = t.w || "Quando puoi";
+  el("t-eyebrow").textContent = t.w || S().taskEyebrowFallback;
   el("t-icon").innerHTML = svg(t.k);
   el("t-title").textContent = t.t;
   el("t-when").textContent = t.w || "";
@@ -1200,7 +1519,7 @@ function paintTask(t){
   // Prima del sì la lista è informativa: caselle vuote sembrerebbero un compito già iniziato.
   el("t-list").hidden = !hasList;
   if (hasList){
-    el("t-list-label").textContent = t.ll || "Da prendere";
+    el("t-list-label").textContent = t.ll || S().listLabelFallback;
     el("t-items").innerHTML = t.l.map(x =>
       `<div class="item"><span class="dot" aria-hidden="true"></span>
          <span class="txt">${esc(x)}</span></div>`).join("");
@@ -1212,9 +1531,7 @@ function paintTask(t){
 
   // Le immagini non stanno nel link: stanno nel gruppo, sopra il messaggio.
   el("t-attach").hidden = !t.f;
-  if (t.f) el("t-attach").textContent = t.f === 1
-    ? "La foto è nel gruppo, insieme a questo messaggio."
-    : `Le ${t.f} foto sono nel gruppo, insieme a questo messaggio.`;
+  if (t.f) el("t-attach").textContent = t.f === 1 ? TP().attachOne : TP().attachMany(t.f);
 
   el("t-words").hidden = !t.m;
   if (t.m){
@@ -1222,7 +1539,7 @@ function paintTask(t){
     el("t-words-from").textContent = t.n;
   }
 
-  el("s-yes").textContent = (t.n || "Lei") + " lo sa.";
+  el("s-yes").textContent = TP().soLoSa(t.n);
   el("y-title").textContent = t.t;
   el("y-when").textContent = t.w ? "· " + t.w : "";
 
@@ -1246,8 +1563,8 @@ function renderTicks(t){
   });
 }
 
-el("btn-yes").onclick  = () => { buzz(); closeRing(); go("yes", "Hai preso il compito."); };
-el("btn-nope").onclick = () => { buzz(); go("no", "Va bene così."); };
+el("btn-yes").onclick  = () => { buzz(); closeRing(); go("yes", TP().announceHaiPreso); };
+el("btn-nope").onclick = () => { buzz(); go("no", TP().announceVaBene); };
 
 function tell(text, kicker, sub){
   share(text);
@@ -1256,16 +1573,15 @@ function tell(text, kicker, sub){
   setTimeout(() => go("bye"), 400);
 }
 el("btn-tell").onclick = () =>
-  tell(`Ci penso io: ${task.t}${task.w ? " — " + task.w : ""}.`, "Grazie.", (task.n || "Lei") + " è a posto.");
+  tell(TP().tellYesMsg(task.t, task.w), TP().tellYesKicker, TP().tellYesSub(task.n));
 el("btn-tell-no").onclick = () =>
-  tell(`Stavolta non ce la faccio per "${task.t}". Riesce qualcun altro?`,
-       "Va bene così.", "Lo vede qualcun altro.");
+  tell(TP().tellNoMsg(task.t), TP().tellNoKicker, TP().tellNoSub);
 el("btn-yes-bye").onclick = () => {
-  buzz(); el("k-bye").textContent = "Perfetto.";
-  el("s-bye").textContent = (task.n || "Lei") + " è a posto."; go("bye");
+  buzz(); el("k-bye").textContent = TP().yesByeKicker;
+  el("s-bye").textContent = TP().tellYesSub(task.n); go("bye");
 };
 el("btn-no-bye").onclick = () => {
-  buzz(); el("k-bye").textContent = "A presto."; el("s-bye").textContent = ""; go("bye");
+  buzz(); el("k-bye").textContent = TP().noByeKicker; el("s-bye").textContent = ""; go("bye");
 };
 
 /* ========================== 7 · ROUTER ========================== */
@@ -1285,12 +1601,13 @@ function route(){
       task = unpack(found.tok);
       if (found.extra) task.m = found.extra;
       if (!task || !task.t) throw new Error("vuoto");
+      if (task.g === "it" || task.g === "en") setLang(task.g, false);
       paintTask(task);
       go("task");
     } catch {
       document.body.classList.add("receiving");
-      el("k-bye").textContent = "Questo link non si apre.";
-      el("s-bye").textContent = "Chiedi a chi te l'ha mandato di rifarlo.";
+      el("k-bye").textContent = TP().brokenLinkTitle;
+      el("s-bye").textContent = TP().brokenLinkSub;
       go("bye");
     }
     return;
@@ -1303,6 +1620,7 @@ function route(){
 window.addEventListener("hashchange", route);
 
 /* ========================== 8 · AVVIO ========================== */
+applyStaticI18n();
 buildComposer();
 if (!readToken()) restoreDraft();
 route();
