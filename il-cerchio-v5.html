@@ -340,6 +340,33 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
 .coffee-btn{ margin-top:14px; text-decoration:none; }
 .coffee-btn svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.7;
   stroke-linecap:round; stroke-linejoin:round; }
+
+/* ---------------- stanza condivisa / bacheca ---------------- */
+.tasklist{ display:flex; flex-direction:column; gap:10px; }
+.task-row{ display:flex; align-items:center; gap:12px; padding:14px 15px;
+  background:var(--card); border:1px solid var(--line); border-radius:13px; }
+.task-row-ico{ flex:none; width:38px; height:38px; border-radius:999px;
+  background:var(--paper); display:grid; place-items:center; }
+.task-row-ico svg{ width:19px; height:19px; stroke:var(--green); fill:none;
+  stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.task-row-body{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.task-row-body b{ font-size:16px; font-weight:600; line-height:1.3; text-wrap:balance; }
+.task-row-body small{ font-size:14px; color:var(--ink-dim); line-height:1.35; }
+.task-row-who{ font-size:13px; color:var(--green); font-weight:600; }
+.task-row.done{ opacity:.6; }
+.task-row.done .task-row-body b{ text-decoration:line-through; }
+.task-row-actions{ flex:none; display:flex; flex-direction:column; gap:6px; }
+.chip-btn{ padding:0 14px; min-height:38px; border-radius:999px; font-size:14px; font-weight:600;
+  white-space:nowrap; background:var(--paper); border:1px solid var(--line-firm); color:var(--ink); }
+.chip-btn.primary{ background:var(--green); color:var(--on-green); border-color:var(--green); }
+.chip-btn:active{ transform:scale(.96); }
+.board-empty{ padding:20px; text-align:center; font-size:15px; color:var(--ink-dim); }
+.fab-add{ position:sticky; bottom:calc(16px + env(safe-area-inset-bottom)); z-index:5; }
+
+.room-box{ display:flex; flex-direction:column; gap:12px; padding:16px 18px;
+  background:var(--sand); border-radius:14px; }
+.room-box-row{ display:flex; gap:8px; align-items:center; }
+.room-code{ font-family:var(--serif); font-size:19px; font-weight:600; word-break:break-all; flex:1 1 auto; }
 </style>
 </head>
 <body>
@@ -353,11 +380,11 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
         <circle class="ring-halo"  cx="26" cy="26" r="24" id="halo"></circle>
         <circle class="ring-arc"   cx="26" cy="26" r="24"></circle>
       </svg>
-      <div class="ring-initial" id="avatar">E</div>
+      <div class="ring-initial" id="avatar">·</div>
     </div>
     <div class="who">
-      <p class="who-name" id="who">Elena</p>
-      <p class="who-meta" id="meta">Firenze, via Pisana</p>
+      <p class="who-name" id="who"></p>
+      <p class="who-meta" id="meta"></p>
     </div>
     <div class="count" id="count" hidden>
       <span class="stack" aria-hidden="true"><i></i><i></i><i></i></span>
@@ -368,238 +395,161 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
 
   <main id="main">
 
-    <!-- ============ CO-PILOTA ============ -->
-    <section class="route" id="r-compose" hidden>
+    <div class="warn" id="warn" hidden>
+      <b id="warn-title" data-i18n="warnTitle">Non riesco a caricare la bacheca</b>
+      <p id="warn-text"></p>
+    </div>
 
-      <div class="view" id="v-compose" hidden>
+    <!-- ============ BACHECA ============ -->
+    <div class="view" id="v-board" hidden>
 
-        <div class="warn" id="warn" hidden>
-          <b data-i18n="warnTitle">Manca l'indirizzo della pagina</b>
-          <p id="warn-text"></p>
-          <button type="button" id="warn-go" data-i18n="warnBtn">Aprire le impostazioni</button>
-        </div>
-
-        <div class="block">
-          <div>
-            <p class="eyebrow" data-i18n="step1Eyebrow">Cosa serve</p>
-            <h2 class="step" id="s1" tabindex="-1" data-i18n="step1Title">Scegli il compito</h2>
-            <p class="hint" data-i18n="step1Hint">Descrivi cosa va fatto, non quello che lei non riesce più a fare.</p>
-          </div>
-          <div class="grid" id="tiles" role="group" aria-labelledby="s1"></div>
-
-          <div class="detail" id="detail" hidden>
-            <div class="detail-head"><b id="d-label"></b><span id="d-meta"></span></div>
-
-            <div id="d-list" hidden>
-              <div class="items" id="d-items"></div>
-              <div class="row" style="margin-top:8px">
-                <input class="input" id="d-draft" autocomplete="off" autocapitalize="sentences"
-                       enterkeyhint="done" maxlength="80" aria-label="Aggiungi alla lista">
-                <button class="add" id="d-add" type="button" data-i18n="addItemBtn">Aggiungi</button>
-              </div>
-              <p class="micro" style="margin-top:8px" data-i18n="addItemHint">
-                Invio per aggiungere. Chi risponde vede la lista e può spuntarla mentre è lì.
-              </p>
-            </div>
-
-            <div id="d-text" hidden>
-              <input class="input" id="d-value" autocomplete="off" autocapitalize="sentences"
-                     enterkeyhint="done" maxlength="140" aria-label="Dettagli">
-              <p class="micro" id="d-note" style="margin-top:8px"></p>
-            </div>
-
-            <div id="d-photo" hidden style="border-top:1px solid var(--line); padding-top:14px">
-              <p class="lbl" id="p-label" style="margin-bottom:9px"></p>
-              <div class="shots" id="shots"></div>
-              <p class="micro" id="p-note" style="margin-top:9px"></p>
-              <input type="file" id="p-input" accept="image/*" multiple hidden>
-            </div>
-          </div>
-        </div>
-
-        <div class="block">
-          <div>
-            <p class="eyebrow" data-i18n="step2Eyebrow">Quando</p>
-            <h2 class="step" id="s2" data-i18n="step2Title">Un momento indicativo</h2>
-            <p class="hint" id="s2-hint">Chi risponde si accorda direttamente con Elena.</p>
-          </div>
-          <div class="chips" id="whens" role="group" aria-labelledby="s2"></div>
-          <div id="day-wrap" hidden>
-            <label class="lbl" for="f-day" data-i18n="dayLabel">Che giorno</label>
-            <input class="input" id="f-day" type="date" style="max-width:260px;margin-top:7px">
-          </div>
-        </div>
-
-        <div class="block">
-          <div>
-            <p class="eyebrow" data-i18n="step3Eyebrow">Facoltativo</p>
-            <h2 class="step" id="s3" data-i18n="step3Title">Le sue parole</h2>
-            <p class="hint" data-i18n="step3Hint">
-              Se te l'ha detto lei, scrivilo com'era. Chi legge riconosce sua nonna,
-              non un incarico.
-            </p>
-          </div>
-          <textarea class="input" id="f-words" rows="2" aria-labelledby="s3"
-            data-i18n-ph="wordsPlaceholder"
-            placeholder="La lista è sul frigo, ho scritto grosso così si legge."></textarea>
-        </div>
-
-        <div class="send-box">
-          <div>
-            <p class="eyebrow" style="margin-bottom:8px" data-i18n="msgEyebrow">Il messaggio nel gruppo</p>
-            <p class="sentence" id="sentence"></p>
-            <p class="sentence-sub" id="sentence-sub" hidden></p>
-          </div>
-          <button class="btn primary" id="btn-send" aria-disabled="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2-6-8-2z"/></svg>
-            <span data-i18n="sendBtn">Manda nel gruppo</span>
-          </button>
-          <p class="action-hint" id="action-hint" aria-live="polite"></p>
-        </div>
-
-        <p class="settings-link"><button id="btn-settings" type="button" data-i18n="settingsLink">Impostazioni</button></p>
+      <button class="btn primary" id="btn-add-task" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span data-i18n="addTaskBtn">Nuovo compito</span>
+      </button>
+      <div class="pills" style="margin-top:12px">
+        <button class="pill" id="btn-share-board" type="button" data-i18n="shareRoomBtn">Condividi su WhatsApp</button>
       </div>
 
-      <div class="view" id="v-sent" hidden>
-        <div class="sent-box">
-          <div class="seal" aria-hidden="true">✓</div>
-          <h2 class="sealed" id="k-sent" tabindex="-1" data-i18n="sentTitle">È nel cerchio</h2>
-          <p class="sentence" id="sent-sentence"></p>
-          <p class="sentence-sub" id="sent-sub" hidden></p>
-          <p class="hint" id="sent-confirm"></p>
+      <div class="block" id="blk-open" style="margin-top:26px">
+        <p class="eyebrow" data-i18n="boardOpenLabel">Da fare</p>
+        <div class="tasklist" id="list-open" style="margin-top:14px"></div>
+        <p class="board-empty" id="empty-open" hidden data-i18n="boardEmpty">Nessun compito al momento. Aggiungine uno.</p>
+      </div>
+
+      <div class="block" id="blk-claimed" hidden>
+        <p class="eyebrow" data-i18n="boardClaimedLabel">In corso</p>
+        <div class="tasklist" id="list-claimed" style="margin-top:14px"></div>
+      </div>
+
+      <div class="block" id="blk-done" hidden>
+        <p class="eyebrow" data-i18n="boardDoneLabel">Fatto</p>
+        <div class="tasklist" id="list-done" style="margin-top:14px"></div>
+        <button class="btn quiet" id="btn-clear-done" type="button" data-i18n="clearDoneBtn">Svuota i fatti</button>
+      </div>
+
+      <p class="settings-link"><button id="btn-settings" type="button" data-i18n="settingsLink">Impostazioni</button></p>
+    </div>
+
+    <!-- ============ NUOVO COMPITO ============ -->
+    <div class="view" id="v-compose" hidden>
+
+      <div class="block">
+        <div>
+          <p class="eyebrow" data-i18n="step1Eyebrow">Cosa serve</p>
+          <h2 class="step" id="s1" tabindex="-1" data-i18n="step1Title">Scegli il compito</h2>
+          <p class="hint" data-i18n="step1Hint">Descrivi cosa va fatto, non chi deve farlo.</p>
+        </div>
+        <div class="grid" id="tiles" role="group" aria-labelledby="s1"></div>
+
+        <div class="detail" id="detail" hidden>
+          <div class="detail-head"><b id="d-label"></b><span id="d-meta"></span></div>
+
+          <div id="d-list" hidden>
+            <div class="items" id="d-items"></div>
+            <div class="row" style="margin-top:8px">
+              <input class="input" id="d-draft" autocomplete="off" autocapitalize="sentences"
+                     enterkeyhint="done" maxlength="80" aria-label="Aggiungi alla lista">
+              <button class="add" id="d-add" type="button" data-i18n="addItemBtn">Aggiungi</button>
+            </div>
+          </div>
+
+          <div id="d-text" hidden>
+            <input class="input" id="d-value" autocomplete="off" autocapitalize="sentences"
+                   enterkeyhint="done" maxlength="140" aria-label="Dettagli">
+            <p class="micro" id="d-note" style="margin-top:8px"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div>
+          <p class="eyebrow" data-i18n="step2Eyebrow">Quando</p>
+          <h2 class="step" id="s2" data-i18n="step2Title">Un momento indicativo</h2>
+        </div>
+        <div class="chips" id="whens" role="group" aria-labelledby="s2"></div>
+        <div id="day-wrap" hidden>
+          <label class="lbl" for="f-day" data-i18n="dayLabel">Che giorno</label>
+          <input class="input" id="f-day" type="date" style="max-width:260px;margin-top:7px">
+        </div>
+      </div>
+
+      <div class="block">
+        <div>
+          <p class="eyebrow" data-i18n="step3Eyebrow">Facoltativo</p>
+          <h2 class="step" id="s3" data-i18n="step3Title">Una nota</h2>
+          <p class="hint" id="s3-hint" data-i18n="step3Hint"></p>
+        </div>
+        <textarea class="input" id="f-words" rows="2" aria-labelledby="s3" data-i18n-ph="wordsPlaceholder"></textarea>
+      </div>
+
+      <div class="stack-actions">
+        <button class="btn primary" id="btn-send" type="button" data-i18n="addTaskBtn">Aggiungi</button>
+        <button class="btn quiet" id="btn-cancel-compose" type="button" data-i18n="cancelBtn">Annulla</button>
+      </div>
+    </div>
+
+    <!-- ============ IMPOSTAZIONI ============ -->
+    <div class="view" id="v-settings" hidden>
+      <h2 class="step" id="k-set" tabindex="-1" style="margin-top:0" data-i18n="settingsTitle">Impostazioni</h2>
+      <p class="hint" style="margin-top:6px" data-i18n="settingsHint">Restano su questo telefono.</p>
+
+      <div class="block" style="margin-top:24px">
+
+        <div class="room-box">
+          <p class="lbl" data-i18n="roomLabel">Il link della tua famiglia</p>
+          <div class="room-box-row">
+            <span class="room-code" id="room-link-display"></span>
+          </div>
           <div class="pills">
-            <button class="pill" id="btn-resend" type="button" data-i18n="resend">Rimanda il messaggio</button>
-            <button class="pill" id="btn-copy" type="button" data-i18n="copyLink">Copia il link</button>
-            <button class="pill" id="btn-edit" type="button" data-i18n="editBtn">Modifica</button>
-            <button class="pill bare" id="btn-reset" type="button" data-i18n="newRequest">Nuova richiesta</button>
+            <button class="pill" id="btn-copy-room" type="button" data-i18n="copyLink">Copia il link</button>
+            <button class="pill" id="btn-share-room" type="button" data-i18n="shareRoomBtn">Condividi su WhatsApp</button>
           </div>
-        </div>
-      </div>
-
-      <div class="view" id="v-settings" hidden>
-        <h2 class="step" id="k-set" tabindex="-1" style="margin-top:0" data-i18n="settingsTitle">Impostazioni</h2>
-        <p class="hint" style="margin-top:6px" data-i18n="settingsHint">Restano su questo telefono. Non escono da qui.</p>
-
-        <div class="block" style="margin-top:24px">
-          <div>
-            <label class="lbl" for="f-base" data-i18n="baseLabel">Indirizzo di questa pagina</label>
-            <p class="micro" style="margin:5px 0 7px" data-i18n="baseHint">
-              Serve a costruire i link da mandare. Deve iniziare per https://
-            </p>
-            <input class="input" id="f-base" autocomplete="off" inputmode="url"
-                   data-i18n-ph="basePlaceholder"
-                   placeholder="https://ilcerchio.netlify.app/">
-            <p class="micro" id="base-state" style="margin-top:7px"></p>
-          </div>
-          <div>
-            <label class="lbl" for="f-name" data-i18n="nameLabel">Come si chiama</label>
-            <input class="input" id="f-name" style="margin-top:7px" autocomplete="off">
-          </div>
-          <div>
-            <label class="lbl" for="f-place" data-i18n="placeLabel">Dove abita</label>
-            <input class="input" id="f-place" style="margin-top:7px" autocomplete="off">
-          </div>
-          <div>
-            <label class="lbl" for="f-size" data-i18n="sizeLabel">Quante persone nel cerchio</label>
-            <input class="input" id="f-size" type="number" min="1" max="20" inputmode="numeric"
-                   style="margin-top:7px;max-width:140px">
-          </div>
-          <div>
-            <label class="lbl" for="f-cond" data-i18n="condLabel">Cosa preferisce fare da sé</label>
-            <p class="micro" style="margin:5px 0 7px" data-i18n="condHint">
-              Serve a te, non viene mandato a nessuno. Chiediglielo, non deciderlo tu.
-            </p>
-            <textarea class="input" id="f-cond" rows="3"
-              data-i18n-ph="condPlaceholder"
-              placeholder="Cucina da sola. In camera entra solo Anna. Non vuole aiuto in bagno."></textarea>
-          </div>
-          <button class="btn primary" id="btn-save" style="margin-top:6px" data-i18n="saveBtn">Salva</button>
-
-          <div style="margin-top:8px">
-            <label class="lbl" data-i18n="langLabel">Lingua</label>
-            <div class="lang-pair" id="lang-pair" role="group" style="margin-top:7px">
-              <button type="button" data-lang="it" aria-pressed="false">Italiano</button>
-              <button type="button" data-lang="en" aria-pressed="false">English</button>
-            </div>
-          </div>
-
-          <a class="btn ghost coffee-btn" id="btn-coffee" href="#" target="_blank" rel="noopener noreferrer">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 9h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M8 3c-.5 1 .5 1.5 0 3M12 3c-.5 1 .5 1.5 0 3"/></svg>
-            <span data-i18n="coffeeBtn">Offrimi un caffè</span>
-          </a>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ CHI RICEVE IL LINK ============ -->
-    <section class="route" id="r-task" hidden>
-
-      <div class="view" id="v-task" hidden>
-        <p class="eyebrow" id="t-eyebrow"></p>
-        <article class="card" style="margin-top:12px">
-          <p class="card-ico" id="t-icon" aria-hidden="true"></p>
-          <h1 class="card-title" id="t-title" tabindex="-1"></h1>
-          <p class="card-when" id="t-when"></p>
-          <p class="card-dur" id="t-dur" hidden></p>
-
-          <div class="plainlist" id="t-list" hidden>
-            <p class="section-lbl" id="t-list-label"></p>
-            <div class="items" id="t-items"></div>
-          </div>
-
-          <p class="info" id="t-info" hidden></p>
-          <p class="attach" id="t-attach" hidden></p>
-
-          <div class="words" id="t-words" hidden>
-            <span id="t-words-text"></span>
-            <span class="words-from" id="t-words-from"></span>
-          </div>
-        </article>
-
-        <div class="stack-actions">
-          <button class="btn primary" id="btn-yes" aria-describedby="reassure" data-i18n="yesBtn">Ci penso io</button>
-          <button class="btn ghost" id="btn-nope" data-i18n="nopeBtn">Non riesco stavolta</button>
-          <p class="reassure" id="reassure" data-i18n-html="reassure">Se non riesci va bene.<br>Lo vede qualcun altro.</p>
-        </div>
-      </div>
-
-      <div class="view" id="v-yes" hidden>
-        <h1 class="kicker" id="k-yes" tabindex="-1">Fatto.</h1>
-        <p class="kicker-sub" id="s-yes"></p>
-        <p class="recap"><b id="y-title"></b> <span id="y-when"></span></p>
-
-        <div id="y-list" hidden style="margin-top:24px">
-          <p class="section-lbl" data-i18n="listLabelFallback">Da prendere</p>
-          <div class="checklist" id="y-checks"></div>
-          <p class="micro" style="margin-top:10px" data-i18n="yListHint">Spunta mentre sei lì. Resta su questo telefono.</p>
+          <p class="micro" data-i18n="roomHint"></p>
         </div>
 
-        <p class="after" data-i18n="afterYes">Manca un passaggio: dillo nel gruppo, così gli altri non ci pensano più.</p>
-
-        <div class="stack-actions">
-          <button class="btn primary" id="btn-tell">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2-6-8-2z"/></svg>
-            <span data-i18n="tellBtn">Dillo nel gruppo</span>
-          </button>
-          <button class="btn quiet" id="btn-yes-bye" data-i18n="yesByeBtn">Ho già scritto, grazie</button>
+        <div>
+          <label class="lbl" for="f-myname" data-i18n="myNameLabel">Il tuo nome</label>
+          <p class="micro" style="margin:5px 0 7px" data-i18n="myNameHint"></p>
+          <input class="input" id="f-myname" style="margin-top:7px" autocomplete="off">
         </div>
-      </div>
 
-      <div class="view" id="v-no" hidden>
-        <h1 class="kicker" id="k-no" tabindex="-1" data-i18n="noTitle">Nessun problema.</h1>
-        <p class="kicker-sub" data-i18n="noSub">Lo vede qualcun altro.</p>
-        <p class="after" data-i18n="afterNo">Se vuoi, scrivilo nel gruppo: chi legge sa che deve pensarci lui.</p>
-        <div class="stack-actions">
-          <button class="btn ghost" id="btn-tell-no" data-i18n="tellNoBtn">Scrivilo nel gruppo</button>
-          <button class="btn quiet" id="btn-no-bye" data-i18n="noByeBtn">Va bene così</button>
+        <div>
+          <label class="lbl" for="f-name" data-i18n="nameLabel">Come si chiama</label>
+          <input class="input" id="f-name" style="margin-top:7px" autocomplete="off">
         </div>
-      </div>
+        <div>
+          <label class="lbl" for="f-place" data-i18n="placeLabel">Dove abita</label>
+          <input class="input" id="f-place" style="margin-top:7px" autocomplete="off">
+        </div>
+        <div>
+          <label class="lbl" for="f-size" data-i18n="sizeLabel">Quante persone nel cerchio</label>
+          <input class="input" id="f-size" type="number" min="0" max="30" inputmode="numeric" style="margin-top:7px;max-width:140px">
+        </div>
+        <div>
+          <label class="lbl" for="f-cond" data-i18n="condLabel">Cosa preferisce fare da sé</label>
+          <p class="micro" style="margin:5px 0 7px" data-i18n="condHint"></p>
+          <textarea class="input" id="f-cond" rows="3" data-i18n-ph="condPlaceholder"></textarea>
+        </div>
+        <button class="btn primary" id="btn-save" style="margin-top:6px" data-i18n="saveBtn">Salva</button>
 
-      <div class="view" id="v-bye" hidden>
-        <h1 class="kicker" id="k-bye" tabindex="-1"></h1>
-        <p class="kicker-sub" id="s-bye"></p>
+        <div style="margin-top:8px">
+          <label class="lbl" data-i18n="langLabel">Lingua</label>
+          <div class="lang-pair" id="lang-pair" role="group" style="margin-top:7px">
+            <button type="button" data-lang="it" aria-pressed="false">Italiano</button>
+            <button type="button" data-lang="en" aria-pressed="false">English</button>
+          </div>
+        </div>
+
+        <a class="btn ghost coffee-btn" id="btn-coffee" href="#" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 9h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M8 3c-.5 1 .5 1.5 0 3M12 3c-.5 1 .5 1.5 0 3"/></svg>
+          <span data-i18n="coffeeBtn">Offrimi un caffè</span>
+        </a>
+
+        <p class="settings-link"><button id="btn-back-board" type="button" data-i18n="backBtn">Torna alla bacheca</button></p>
       </div>
-    </section>
+    </div>
+
   </main>
 
   <p class="sr" role="status" aria-live="polite" id="live"></p>
@@ -620,8 +570,6 @@ const ICONS = {
   commissione:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 8l9 6 9-6"/>',
   compagnia:'<circle cx="9" cy="9" r="3"/><path d="M3 20c0-3 2.7-5 6-5s6 2 6 5"/><path d="M17 8a3 3 0 0 1 0 6"/><path d="M18 20c0-2-.7-3.5-2-4.5"/>',
   altro:'<path d="M4 20l4-1 10-10-3-3L5 16z"/><path d="M14 6l3 3"/>'
-,
-  camera:'<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/>'
 };
 const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k] || ICONS.altro}</svg>`;
 
@@ -632,72 +580,62 @@ const COFFEE_URL = "";
 const I18N = {
 it: { code:"it", toggleLabel:"EN", locale:"it-IT",
   ui:{
-    warnTitle:"Manca l'indirizzo della pagina", warnBtn:"Aprire le impostazioni",
+    warnTitle:"Non riesco a caricare la bacheca",
     step1Eyebrow:"Cosa serve", step1Title:"Scegli il compito",
-    step1Hint:"Descrivi cosa va fatto, non quello che lei non riesce più a fare.",
+    step1Hint:"Descrivi cosa va fatto, non chi deve farlo.",
     addItemBtn:"Aggiungi",
-    addItemHint:"Invio per aggiungere. Chi risponde vede la lista e può spuntarla mentre è lì.",
     step2Eyebrow:"Quando", step2Title:"Un momento indicativo", dayLabel:"Che giorno",
-    step3Eyebrow:"Facoltativo", step3Title:"Le sue parole",
-    step3Hint:"Se te l'ha detto lei, scrivilo com'era. Chi legge riconosce sua nonna, non un incarico.",
-    wordsPlaceholder:"La lista è sul frigo, ho scritto grosso così si legge.",
-    msgEyebrow:"Il messaggio nel gruppo", sendBtn:"Manda nel gruppo", settingsLink:"Impostazioni",
-    sentTitle:"È nel cerchio", resend:"Rimanda il messaggio", copyLink:"Copia il link",
-    editBtn:"Modifica", newRequest:"Nuova richiesta", coffeeBtn:"Offrimi un caffè",
+    step3Eyebrow:"Facoltativo", step3Title:"Una nota",
+    step3Hint:"Se vuoi aggiungere un dettaglio o un promemoria, scrivilo qui.",
+    wordsPlaceholder:"Il detersivo per i piatti è quasi finito.",
+    settingsLink:"Impostazioni", copyLink:"Copia il link", coffeeBtn:"Offrimi un caffè",
     settingsTitle:"Impostazioni", settingsHint:"Restano su questo telefono. Non escono da qui.",
-    baseLabel:"Indirizzo di questa pagina",
-    baseHint:"Serve a costruire i link da mandare. Deve iniziare per https://",
-    basePlaceholder:"https://ilcerchio.netlify.app/",
     nameLabel:"Come si chiama", placeLabel:"Dove abita",
     sizeLabel:"Quante persone nel cerchio", condLabel:"Cosa preferisce fare da sé",
     condHint:"Serve a te, non viene mandato a nessuno. Chiediglielo, non deciderlo tu.",
     condPlaceholder:"Cucina da sola. In camera entra solo Anna. Non vuole aiuto in bagno.",
     saveBtn:"Salva", langLabel:"Lingua", langSwitchAria:"Cambia lingua",
-    taskEyebrowFallback:"Quando puoi", listLabelFallback:"Da prendere",
-    yesBtn:"Ci penso io", nopeBtn:"Non riesco stavolta",
     reassure:"Se non riesci va bene.<br>Lo vede qualcun altro.",
-    yListHint:"Spunta mentre sei lì. Resta su questo telefono.",
-    afterYes:"Manca un passaggio: dillo nel gruppo, così gli altri non ci pensano più.",
-    tellBtn:"Dillo nel gruppo", yesByeBtn:"Ho già scritto, grazie",
-    noTitle:"Nessun problema.", noSub:"Lo vede qualcun altro.",
-    afterNo:"Se vuoi, scrivilo nel gruppo: chi legge sa che deve pensarci lui.",
-    tellNoBtn:"Scrivilo nel gruppo", noByeBtn:"Va bene così"
+    addTaskBtn:"Nuovo compito", cancelBtn:"Annulla",
+    boardOpenLabel:"Da fare", boardClaimedLabel:"In corso", boardDoneLabel:"Fatto",
+    boardEmpty:"Nessun compito al momento. Aggiungine uno.",
+    clearDoneBtn:"Svuota i fatti",
+    roomLabel:"Il link della tua famiglia",
+    roomHint:"Chiunque apre questo link vede e aggiorna la stessa bacheca. Salvalo o condividilo.",
+    shareRoomBtn:"Condividi su WhatsApp",
+    myNameLabel:"Il tuo nome",
+    myNameHint:"Compare quando ti prendi un compito. Resta su questo telefono.",
+    backBtn:"Torna alla bacheca",
+    doneBtn:"Fatto", unclaimBtn:"Lascia", reopenBtn:"Riapri",
+    yesBtn:"Ci penso io"
   },
   tasks:[
-    { id:"spesa",       icon:"spesa",       t:"Fare la spesa",               h:"buste pesanti",             p:"fare la spesa",                            d:"circa 45 minuti" },
-    { id:"medicine",    icon:"medicine",    t:"Ritirare le medicine",        h:"in farmacia",               p:"ritirare le medicine in farmacia",         d:"circa 20 minuti" },
-    { id:"visita",      icon:"visita",      t:"Accompagnare a una visita",   h:"in macchina",               p:"andare a una visita in macchina",          d:"attesa inclusa" },
-    { id:"casa",        icon:"casa",        t:"Dare una mano in casa",       h:"le cose in alto",           p:"una mano in casa",                         d:"circa un'ora" },
-    { id:"pasto",       icon:"pasto",       t:"Portare o cucinare un pasto", h:"anche una porzione in più", p:"un pasto",                                 d:"" },
-    { id:"commissione", icon:"commissione", t:"Fare una commissione",        h:"posta, banca, bollette",    p:"una commissione: posta, banca o bollette", d:"circa 30 minuti" },
-    { id:"compagnia",   icon:"compagnia",   t:"Passare a trovarla",          h:"non serve un motivo",       p:"un po' di compagnia",                      d:"il tempo che hai" },
-    { id:"altro",       icon:"altro",       t:"Altro",                       h:"scrivi tu",                 p:"",                                         d:"" }
+    { id:"spesa",       icon:"spesa",       t:"Fare la spesa",               h:"buste pesanti" },
+    { id:"medicine",    icon:"medicine",    t:"Ritirare le medicine",        h:"in farmacia" },
+    { id:"visita",      icon:"visita",      t:"Accompagnare a una visita",   h:"in macchina" },
+    { id:"casa",        icon:"casa",        t:"Dare una mano in casa",       h:"le cose in alto" },
+    { id:"pasto",       icon:"pasto",       t:"Portare o cucinare un pasto", h:"anche una porzione in più" },
+    { id:"commissione", icon:"commissione", t:"Fare una commissione",        h:"posta, banca, bollette" },
+    { id:"compagnia",   icon:"compagnia",   t:"Passare a trovarla",          h:"non serve un motivo" },
+    { id:"altro",       icon:"altro",       t:"Altro",                       h:"scrivi tu" }
   ],
   whens:[
-    { id:"oggi", label:"Oggi", p:"oggi" },
-    { id:"domani", label:"Domani", p:"domani" },
-    { id:"settimana", label:"Questa settimana", p:"in settimana" },
-    { id:"ognigiorno", label:"Ogni giorno", p:"ogni giorno" },
-    { id:"ricorrente", label:"Ogni settimana", p:"ogni settimana" },
-    { id:"giorno", label:"Scegli il giorno", p:"" }
+    { id:"oggi", label:"Oggi" },
+    { id:"domani", label:"Domani" },
+    { id:"settimana", label:"Questa settimana" },
+    { id:"ognigiorno", label:"Ogni giorno" },
+    { id:"ricorrente", label:"Ogni settimana" },
+    { id:"giorno", label:"Scegli il giorno" }
   ],
   details:{
-    spesa:       { kind:"list", label:"La lista della spesa", ph:"es. 2 litri di latte",
-                   photo:"Foto della lista scritta a mano",
-                   photoNote:"Se te l'ha scritta lei, fotografala: si legge meglio dell'originale ricopiato." },
+    spesa:       { kind:"list", label:"La lista della spesa", ph:"es. 2 litri di latte" },
     medicine:    { kind:"list", label:"Cosa ritirare", ph:"es. Cardioaspirina",
-                   note:"Non serve scrivere perché le prende.",
-                   photo:"Foto della ricetta e della tessera sanitaria",
-                   photoNote:"In farmacia servono entrambe. Partono nel gruppo insieme al messaggio, non dentro il link." },
-    commissione: { kind:"list", label:"Le commissioni", ph:"es. pagare la bolletta della luce",
-                   photo:"Foto del bollettino o del documento",
-                   photoNote:"Serve allo sportello per pagamenti e pratiche." },
+                   note:"Non serve scrivere perché le prende." },
+    commissione: { kind:"list", label:"Le commissioni", ph:"es. pagare la bolletta della luce" },
     visita:      { kind:"text", label:"Dove e a che ora", ph:"es. Careggi, radiologia, ore 10",
-                   note:"Serve anche il ritorno? Scrivilo qui.",
-                   photo:"Foto dell'impegnativa o del promemoria", photoNote:"Facoltativa." },
+                   note:"Serve anche il ritorno? Scrivilo qui." },
     casa:        { kind:"text", label:"Cosa c'è da fare", ph:"es. cambiare la lampadina in cucina",
-                   note:"Una cosa per volta funziona meglio.",
-                   photo:"Foto di cosa serve", photoNote:"Una foto spiega meglio di tre righe." },
+                   note:"Una cosa per volta funziona meglio." },
     pasto:       { kind:"text", label:"Cosa le farebbe piacere", ph:"es. una minestra, poco sale",
                    note:"Cose da evitare: scrivile qui." },
     compagnia:   { kind:"text", label:"Qualcosa da sapere", ph:"es. le piace parlare di giardinaggio",
@@ -707,131 +645,81 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
   },
   tpl:{
     countLabel: n => `${n} nel cerchio`,
-    step2Hint: name => `Chi risponde si accorda direttamente con ${name}.`,
-    sentenceReady: (name, tp, wp) => `${name} ha bisogno di una mano per ${tp}${wp ? ", " + wp : ""}.`,
-    sentencePending: name => `${name} ha bisogno di una mano per…`,
-    warnNoBaseDetected:"Non riesco a costruire i link. Incolla l'indirizzo del sito nelle impostazioni.",
-    warnNoBasePreview:"Stai aprendo la pagina in anteprima o da file locale, quindi il link nel messaggio non sarebbe cliccabile. Mettila online e incolla qui l'indirizzo.",
-    hintNoBase:"Manca l'indirizzo della pagina: senza, il link non si apre.",
-    hintNeedTask:"Scegli cosa serve per continuare.",
-    hintNeedTaskAltro:"Scrivi cosa serve per continuare.",
-    hintNeedWhen:"Aggiungi quando serve.",
-    hintNeedDay:"Scegli un giorno per continuare.",
-    hintLongList:"La lista è lunga: il link diventa un muro di caratteri. Meglio fotografarla.",
-    hintReady: (size, name) => `Lo vedono ${size} persone. Nessuna notifica a ${name}.`,
-    sentConfirm: size => `${size} persone vedono la richiesta. Chi se la prende te lo scrive nel gruppo.`,
-    attachOne:"La foto è nel gruppo, insieme a questo messaggio.",
-    attachMany: n => `Le ${n} foto sono nel gruppo, insieme a questo messaggio.`,
     itemCount: n => `${n} ${n === 1 ? "cosa" : "cose"}`,
-    baseStateOk: n => `Va bene: ${n}`,
-    baseStateInvalid:"Indirizzo non valido.",
-    soLoSa: name => `${name || "Lei"} lo sa.`,
-    tellYesMsg: (title, when) => `Ci penso io: ${title}${when ? " — " + when : ""}.`,
-    tellYesKicker:"Grazie.",
-    tellYesSub: name => `${name || "Lei"} è a posto.`,
-    yesByeKicker:"Perfetto.",
-    tellNoMsg: title => `Stavolta non ce la faccio per "${title}". Riesce qualcun altro?`,
-    tellNoKicker:"Va bene così.", tellNoSub:"Lo vede qualcun altro.",
-    noByeKicker:"A presto.",
-    brokenLinkTitle:"Questo link non si apre.",
-    brokenLinkSub:"Chiedi a chi te l'ha mandato di rifarlo.",
-    msgLines: ({name, tp, wp, dl, nFoto, words}) => {
-      const lines = [`${name} ha bisogno di una mano per ${tp}${wp ? ", " + wp : ""}.`];
-      if (dl) lines.push("", dl);
-      if (nFoto) lines.push("", nFoto === 1 ? "La foto è qui sotto." : `Qui sotto trovi le ${nFoto} foto.`);
-      if (words) lines.push("", `"${words}"`, `— ${name}`);
-      lines.push("", "Se puoi prendertelo, apri qui:");
-      return lines;
-    },
-    msgTail:"Se non puoi, va bene lo stesso.",
+    turnLabel: name => `Tocca a ${name}`,
+    shareRoomMsg: link => `Guarda la bacheca de Il Cerchio: ${link}`,
+    loadError:"Controlla la connessione e riprova.",
+    hintNeedTask:"Scegli cosa serve prima di aggiungere.",
     toastVoceAccorciata:"Voce accorciata: tienile brevi.",
     toastGiaLista:"C'è già nella lista.",
-    toastMaxFoto:"Massimo quattro foto.",
-    toastBozza:"Bozza ripresa. Le foto vanno riallegate.",
-    toastPrimaIndirizzo:"Prima serve l'indirizzo della pagina.",
-    toastSalvatoOk:"Salvato su questo telefono.",
-    toastSalvatoInvalid:"Salvato, ma l'indirizzo non è valido.",
-    announceImpostazioniSalvate:"Impostazioni salvate.",
-    announceNuovaRichiesta:"Nuova richiesta.",
-    announceHaiPreso:"Hai preso il compito.",
-    announceVaBene:"Va bene così.",
-    announceRichiestaMandata:"Richiesta mandata nel gruppo.",
-    toastFotoAMano:"Le foto vanno allegate a mano nel gruppo: da qui non partono.",
     toastLinkCopiato:"Link copiato.",
     toastMessaggioCopiato:"Messaggio copiato: incollalo in WhatsApp.",
     toastCopiato:"Copiato.",
     toastCopiaFallita:"Copia non riuscita: seleziona il testo a mano.",
-    toastCoffeeMissing:"Aggiungi il tuo link nel codice (COFFEE_URL) per attivare questo pulsante."
+    toastSalvatoOk:"Salvato.",
+    toastCoffeeMissing:"Aggiungi il tuo link nel codice (COFFEE_URL) per attivare questo pulsante.",
+    announceImpostazioniSalvate:"Impostazioni salvate.",
+    announceAggiunto:"Aggiunto alla bacheca."
   }
 },
 en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
   ui:{
-    warnTitle:"The page address is missing", warnBtn:"Open settings",
+    warnTitle:"Can't load the board",
     step1Eyebrow:"What's needed", step1Title:"Choose the task",
-    step1Hint:"Describe what needs doing, not what she can no longer do.",
+    step1Hint:"Describe what needs doing, not who should do it.",
     addItemBtn:"Add",
-    addItemHint:"Press enter to add. Whoever answers sees the list and can check it off while they're there.",
     step2Eyebrow:"When", step2Title:"A rough time", dayLabel:"Which day",
-    step3Eyebrow:"Optional", step3Title:"Her own words",
-    step3Hint:"If she told you herself, write it as she said it. Whoever reads it will recognize their grandma, not a task.",
-    wordsPlaceholder:"The list is on the fridge, I wrote it big so it's easy to read.",
-    msgEyebrow:"The message in the group", sendBtn:"Send to the group", settingsLink:"Settings",
-    sentTitle:"It's in the circle", resend:"Resend the message", copyLink:"Copy the link",
-    editBtn:"Edit", newRequest:"New request", coffeeBtn:"Buy me a coffee",
+    step3Eyebrow:"Optional", step3Title:"A note",
+    step3Hint:"If you want to add a detail or a reminder, write it here.",
+    wordsPlaceholder:"The dish soap is almost out.",
+    settingsLink:"Settings", copyLink:"Copy the link", coffeeBtn:"Buy me a coffee",
     settingsTitle:"Settings", settingsHint:"These stay on this phone. They don't leave here.",
-    baseLabel:"This page's address",
-    baseHint:"Used to build the links you send. Must start with https://",
-    basePlaceholder:"https://ilcerchio.netlify.app/",
     nameLabel:"Her name", placeLabel:"Where she lives",
     sizeLabel:"How many people in the circle", condLabel:"What she prefers to do herself",
     condHint:"This is for you, it's never sent to anyone. Ask her, don't decide for her.",
     condPlaceholder:"Cooks on her own. Only Anna comes into the bedroom. Doesn't want help in the bathroom.",
     saveBtn:"Save", langLabel:"Language", langSwitchAria:"Change language",
-    taskEyebrowFallback:"Whenever you can", listLabelFallback:"To bring",
-    yesBtn:"I've got it", nopeBtn:"Can't this time",
     reassure:"It's okay if you can't.<br>Someone else will see it.",
-    yListHint:"Check them off while you're there. Stays on this phone.",
-    afterYes:"One step left: say it in the group, so the others can stop thinking about it.",
-    tellBtn:"Say it in the group", yesByeBtn:"Already wrote it, thanks",
-    noTitle:"No problem.", noSub:"Someone else will see it.",
-    afterNo:"If you want, write it in the group: whoever reads it will know to take care of it.",
-    tellNoBtn:"Write it in the group", noByeBtn:"That's fine"
+    addTaskBtn:"New task", cancelBtn:"Cancel",
+    boardOpenLabel:"To do", boardClaimedLabel:"In progress", boardDoneLabel:"Done",
+    boardEmpty:"No tasks right now. Add one.",
+    clearDoneBtn:"Clear done",
+    roomLabel:"Your family's link",
+    roomHint:"Anyone who opens this link sees and updates the same board. Save it or share it.",
+    shareRoomBtn:"Share on WhatsApp",
+    myNameLabel:"Your name",
+    myNameHint:"Shown when you take a task. Stays on this phone.",
+    backBtn:"Back to the board",
+    doneBtn:"Done", unclaimBtn:"Leave it", reopenBtn:"Reopen",
+    yesBtn:"I've got it"
   },
   tasks:[
-    { id:"spesa",       icon:"spesa",       t:"Get the groceries",           h:"heavy bags",                p:"get the groceries",                        d:"about 45 minutes" },
-    { id:"medicine",    icon:"medicine",    t:"Pick up medicine",            h:"at the pharmacy",           p:"pick up the medicine at the pharmacy",     d:"about 20 minutes" },
-    { id:"visita",      icon:"visita",      t:"Take her to an appointment",  h:"by car",                    p:"go to an appointment by car",              d:"waiting included" },
-    { id:"casa",        icon:"casa",        t:"Help around the house",       h:"the high-up things",        p:"a hand around the house",                  d:"about an hour" },
-    { id:"pasto",       icon:"pasto",       t:"Bring or cook a meal",        h:"an extra portion helps too",p:"a meal",                                   d:"" },
-    { id:"commissione", icon:"commissione", t:"Run an errand",               h:"post office, bank, bills",  p:"an errand: post office, bank, or bills",   d:"about 30 minutes" },
-    { id:"compagnia",   icon:"compagnia",   t:"Stop by for a visit",         h:"no reason needed",          p:"a bit of company",                         d:"however long you have" },
-    { id:"altro",       icon:"altro",       t:"Something else",              h:"write it in",               p:"",                                         d:"" }
+    { id:"spesa",       icon:"spesa",       t:"Get the groceries",           h:"heavy bags" },
+    { id:"medicine",    icon:"medicine",    t:"Pick up medicine",            h:"at the pharmacy" },
+    { id:"visita",      icon:"visita",      t:"Take her to an appointment",  h:"by car" },
+    { id:"casa",        icon:"casa",        t:"Help around the house",       h:"the high-up things" },
+    { id:"pasto",       icon:"pasto",       t:"Bring or cook a meal",        h:"an extra portion helps too" },
+    { id:"commissione", icon:"commissione", t:"Run an errand",               h:"post office, bank, bills" },
+    { id:"compagnia",   icon:"compagnia",   t:"Stop by for a visit",         h:"no reason needed" },
+    { id:"altro",       icon:"altro",       t:"Something else",              h:"write it in" }
   ],
   whens:[
-    { id:"oggi", label:"Today", p:"today" },
-    { id:"domani", label:"Tomorrow", p:"tomorrow" },
-    { id:"settimana", label:"This week", p:"this week" },
-    { id:"ognigiorno", label:"Every day", p:"every day" },
-    { id:"ricorrente", label:"Every week", p:"every week" },
-    { id:"giorno", label:"Choose the day", p:"" }
+    { id:"oggi", label:"Today" },
+    { id:"domani", label:"Tomorrow" },
+    { id:"settimana", label:"This week" },
+    { id:"ognigiorno", label:"Every day" },
+    { id:"ricorrente", label:"Every week" },
+    { id:"giorno", label:"Choose the day" }
   ],
   details:{
-    spesa:       { kind:"list", label:"The shopping list", ph:"e.g. 2 litres of milk",
-                   photo:"Photo of the handwritten list",
-                   photoNote:"If she wrote it herself, take a photo: it reads better than a copied-out version." },
+    spesa:       { kind:"list", label:"The shopping list", ph:"e.g. 2 litres of milk" },
     medicine:    { kind:"list", label:"What to pick up", ph:"e.g. Aspirin",
-                   note:"No need to write why she's taking them.",
-                   photo:"Photo of the prescription and health card",
-                   photoNote:"Both are needed at the pharmacy. They go to the group along with the message, not inside the link." },
-    commissione: { kind:"list", label:"The errands", ph:"e.g. pay the electricity bill",
-                   photo:"Photo of the bill or document",
-                   photoNote:"Needed at the counter for payments and paperwork." },
+                   note:"No need to write why she's taking them." },
+    commissione: { kind:"list", label:"The errands", ph:"e.g. pay the electricity bill" },
     visita:      { kind:"text", label:"Where and when", ph:"e.g. Careggi hospital, radiology, 10am",
-                   note:"Need a ride back too? Write it here.",
-                   photo:"Photo of the referral or reminder", photoNote:"Optional." },
+                   note:"Need a ride back too? Write it here." },
     casa:        { kind:"text", label:"What needs doing", ph:"e.g. change the lightbulb in the kitchen",
-                   note:"One thing at a time works best.",
-                   photo:"Photo of what's needed", photoNote:"A photo explains better than three lines." },
+                   note:"One thing at a time works best." },
     pasto:       { kind:"text", label:"What she'd enjoy", ph:"e.g. a soup, light on salt",
                    note:"Things to avoid: write them here." },
     compagnia:   { kind:"text", label:"Something to know", ph:"e.g. she likes talking about gardening",
@@ -841,68 +729,28 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
   },
   tpl:{
     countLabel: n => `${n} in the circle`,
-    step2Hint: name => `Whoever answers arranges it directly with ${name}.`,
-    sentenceReady: (name, tp, wp) => `${name} needs a hand with ${tp}${wp ? ", " + wp : ""}.`,
-    sentencePending: name => `${name} needs a hand with…`,
-    warnNoBaseDetected:"I can't build the links. Paste the site's address in settings.",
-    warnNoBasePreview:"You're opening this page in preview or from a local file, so the link in the message wouldn't be clickable. Put it online and paste the address here.",
-    hintNoBase:"The page address is missing: without it, the link won't open.",
-    hintNeedTask:"Choose what's needed to continue.",
-    hintNeedTaskAltro:"Write what's needed to continue.",
-    hintNeedWhen:"Add when it's needed.",
-    hintNeedDay:"Choose a day to continue.",
-    hintLongList:"The list is long: the link becomes a wall of characters. Better to photograph it.",
-    hintReady: (size, name) => `${size} people will see it. No notification to ${name}.`,
-    sentConfirm: size => `${size} people see the request. Whoever takes it will tell you in the group.`,
-    attachOne:"The photo is in the group, along with this message.",
-    attachMany: n => `The ${n} photos are in the group, along with this message.`,
     itemCount: n => `${n} ${n === 1 ? "thing" : "things"}`,
-    baseStateOk: n => `Looks good: ${n}`,
-    baseStateInvalid:"Invalid address.",
-    soLoSa: name => `${name || "She"} knows.`,
-    tellYesMsg: (title, when) => `I've got it: ${title}${when ? " — " + when : ""}.`,
-    tellYesKicker:"Thanks.",
-    tellYesSub: name => `${name || "She"} is all set.`,
-    yesByeKicker:"Perfect.",
-    tellNoMsg: title => `I can't manage "${title}" this time. Can someone else?`,
-    tellNoKicker:"That's okay.", tellNoSub:"Someone else will see it.",
-    noByeKicker:"See you soon.",
-    brokenLinkTitle:"This link won't open.",
-    brokenLinkSub:"Ask whoever sent it to you to make it again.",
-    msgLines: ({name, tp, wp, dl, nFoto, words}) => {
-      const lines = [`${name} needs a hand with ${tp}${wp ? ", " + wp : ""}.`];
-      if (dl) lines.push("", dl);
-      if (nFoto) lines.push("", nFoto === 1 ? "The photo is right below." : `You'll find the ${nFoto} photos below.`);
-      if (words) lines.push("", `"${words}"`, `— ${name}`);
-      lines.push("", "If you can take it, open this:");
-      return lines;
-    },
-    msgTail:"If you can't, that's okay too.",
+    turnLabel: name => `${name}'s turn`,
+    shareRoomMsg: link => `Check out the Il Cerchio board: ${link}`,
+    loadError:"Check your connection and try again.",
+    hintNeedTask:"Choose what's needed before adding.",
     toastVoceAccorciata:"Item shortened: keep them brief.",
     toastGiaLista:"Already on the list.",
-    toastMaxFoto:"Four photos maximum.",
-    toastBozza:"Draft restored. Photos need to be reattached.",
-    toastPrimaIndirizzo:"The page address is needed first.",
-    toastSalvatoOk:"Saved on this phone.",
-    toastSalvatoInvalid:"Saved, but the address isn't valid.",
-    announceImpostazioniSalvate:"Settings saved.",
-    announceNuovaRichiesta:"New request.",
-    announceHaiPreso:"You took the task.",
-    announceVaBene:"That's fine.",
-    announceRichiestaMandata:"Request sent to the group.",
-    toastFotoAMano:"Photos need to be attached by hand in the group: they don't go from here.",
     toastLinkCopiato:"Link copied.",
     toastMessaggioCopiato:"Message copied: paste it in WhatsApp.",
     toastCopiato:"Copied.",
     toastCopiaFallita:"Copy failed: select the text by hand.",
-    toastCoffeeMissing:"Add your link in the code (COFFEE_URL) to enable this button."
+    toastSalvatoOk:"Saved.",
+    toastCoffeeMissing:"Add your link in the code (COFFEE_URL) to enable this button.",
+    announceImpostazioniSalvate:"Settings saved.",
+    announceAggiunto:"Added to the board."
   }
 }
 };
 
 /* ========================== 3 · STATO ========================== */
 const el = id => document.getElementById(id);
-const KEY_SETUP = "cerchio:setup", KEY_TICKS = "cerchio:ticks:", KEY_DRAFT = "cerchio:bozza";
+const KEY_SETUP = "cerchio:setup", KEY_ROOM = "cerchio:room", KEY_MYNAME = "cerchio:myname";
 const store = {
   get(k, f){ try { return JSON.parse(localStorage.getItem(k)) ?? f; } catch { return f; } },
   set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
@@ -920,97 +768,104 @@ const S = () => I18N[LANG].ui;
 const TP = () => I18N[LANG].tpl;
 let TASKS = I18N[LANG].tasks, WHENS = I18N[LANG].whens, DETAILS = I18N[LANG].details;
 
-/* FIX v3 — l'origine va validata.
-   In una preview in sandbox location.origin vale "null" e pathname "srcdoc":
-   concatenandoli nasceva "nullsrcdoc", che WhatsApp non rende cliccabile. */
-function detectBase(){
-  const ok = location.protocol === "https:" || location.protocol === "http:";
-  if (!ok) return "";
-  return (location.origin + location.pathname).replace(/#.*$/, "").replace(/\?.*$/, "");
+let setup = Object.assign({ name:"", place:"", size:0, conditions:"" }, store.get(KEY_SETUP, {}));
+let myName = store.get(KEY_MYNAME, "");
+let draft = { task:null, lists:{}, texts:{}, when:null, day:"", words:"" };
+let room = { _v:"", setup:{ name:"", place:"", size:0, lang:LANG }, tasks:[] };
+let ROOM_CODE = "";
+let current = null;
+let pollTimer = null;
+/* Ogni risposta porta la propria versione (_v, basata sull'istante di
+   scrittura sul server). Una GET di poll partita prima di un'azione ma
+   arrivata dopo può comunque contenere dati leggermente vecchi (piccola
+   latenza di propagazione dello storage): confrontando le versioni,
+   invece dell'ordine di arrivo in rete, scartiamo sempre chi è più vecchio,
+   indipendentemente da quando la risposta arriva. */
+async function withRoom(promise){
+  const data = await promise;
+  if (!room._v || (data._v && data._v >= room._v)) room = data;
+  return room;
 }
-function normalizeBase(v){
-  let s = (v || "").trim();
-  if (!s) return "";
-
-  // Schemi non navigabili: rifiutati, non "riparati". Aggiungere https://
-  // davanti a "nullsrcdoc" o a un percorso locale produce un indirizzo che
-  // sembra valido e non lo è — era esattamente il link non cliccabile
-  // arrivato su WhatsApp.
-  if (/^(about|file|blob|data|javascript):/i.test(s)) return "";
-  if (!/^https?:\/\//i.test(s)){
-    if (s.includes("/") && !s.split("/")[0].includes(".")) return "";
-    s = "https://" + s.replace(/^\/+/, "");
-  }
-
-  try {
-    const u = new URL(s);
-    const host = u.hostname;
-    if (!host) return "";
-    const isIP = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
-    const isLocal = host === "localhost";
-    // Un host senza punto non esiste su internet: "null", "srcdoc",
-    // "nullsrcdoc" cadono tutti qui.
-    if (!isIP && !isLocal && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)) return "";
-    return u.origin + u.pathname;
-  } catch { return ""; }
-}
-
-let setup = Object.assign(
-  { name:"Elena", place:"Firenze, via Pisana", size:4, conditions:"", base:"" },
-  store.get(KEY_SETUP, {})
-);
-if (!setup.base) setup.base = detectBase();
-
-let draft = { task:null, lists:{}, texts:{}, when:null, day:"", words:"", shots:{} };
-/* shots è indicizzato per compito, come lists e texts: allegando la ricetta
-   a "medicine" e poi cambiando compito, le foto restavano attaccate e
-   partivano lo stesso, pur essendo sparite dallo schermo. */
-const myShots = () => (draft.task && draft.shots[draft.task]) || [];
-let task = null, ticks = {}, current = null;
 
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const buzz = () => { try { navigator.vibrate && navigator.vibrate(12); } catch {} };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 
-/* payload compatto: array anziché oggetto → link 25% più corto */
-const b64 = o => btoa(unescape(encodeURIComponent(JSON.stringify(o))))
-  .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-const unb64 = s => JSON.parse(decodeURIComponent(escape(
-  atob(String(s).replace(/-/g,"+").replace(/_/g,"/")))));
-
-/* Le "sue parole" ora stanno dentro il payload codificato come tutto il
-   resto. Prima viaggiavano in chiaro come &m=... : comparivano nella barra
-   degli indirizzi e in qualsiasi anteprima del link. */
-function pack(p){ return b64([1, p.n, p.p, p.k, p.t, p.w, p.d, p.x, p.ll, p.l, p.m || "", p.f || 0, p.g || "it"]); }
-function unpack(s){
-  const a = unb64(s);
-  if (Array.isArray(a)){
-    return { n:a[1]||"", p:a[2]||"", k:a[3]||"altro", t:a[4]||"", w:a[5]||"",
-             d:a[6]||"", x:a[7]||"", ll:a[8]||"", l:a[9]||[], m:a[10]||"", f:a[11]||0, g:a[12]||"it" };
-  }
-  return a; // retrocompatibilità con i link della v2
+function rndCode(len){
+  const alphabet = "abcdefghjkmnpqrstuvwxyz23456789";
+  let s = "";
+  for (let i = 0; i < len; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return s;
 }
 
-/* ========================== 4 · NAVIGAZIONE ========================== */
-const VIEWS = {
-  compose:{ v:"v-compose", r:"r-compose", f:"s1", recv:false },
-  sent:{ v:"v-sent", r:"r-compose", f:"k-sent", recv:false },
-  settings:{ v:"v-settings", r:"r-compose", f:"k-set", recv:false },
-  task:{ v:"v-task", r:"r-task", f:"t-title", recv:true },
-  yes:{ v:"v-yes", r:"r-task", f:"k-yes", recv:true },
-  no:{ v:"v-no", r:"r-task", f:"k-no", recv:true },
-  bye:{ v:"v-bye", r:"r-task", f:"k-bye", recv:true }
-};
+function resolveRoomCode(){
+  const q = new URLSearchParams(location.search).get("r");
+  if (q && /^[a-z0-9]{4,24}$/i.test(q)){
+    store.set(KEY_ROOM, q.toLowerCase());
+    return q.toLowerCase();
+  }
+  const saved = store.get(KEY_ROOM, null);
+  const code = saved || rndCode(8);
+  if (!saved) store.set(KEY_ROOM, code);
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set("r", code);
+    history.replaceState(null, "", u.toString());
+  } catch {}
+  return code;
+}
 
+function roomUrl(){
+  const clean = (location.origin + location.pathname).replace(/\?.*$/, "").replace(/#.*$/, "");
+  return clean + "?r=" + ROOM_CODE;
+}
+
+/* ========================== 4 · API ========================== */
+async function apiGet(){
+  const res = await fetch(`/api/room?code=${encodeURIComponent(ROOM_CODE)}`, { cache:"no-store" });
+  if (!res.ok) throw new Error("get_failed");
+  return res.json();
+}
+async function apiPost(body){
+  const res = await fetch(`/api/room?code=${encodeURIComponent(ROOM_CODE)}`, {
+    method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error("post_failed");
+  return res.json();
+}
+async function loadRoom(silent){
+  try {
+    await withRoom(apiGet());
+    el("warn").hidden = true;
+    applyRoomHeader();
+    if (current === "board") renderBoard();
+    return true;
+  } catch (e){
+    if (!silent){
+      el("warn-text").textContent = TP().loadError;
+      el("warn").hidden = false;
+    }
+    return false;
+  }
+}
+function startPolling(){
+  stopPolling();
+  pollTimer = setInterval(() => { if (!document.hidden) loadRoom(true); }, 6000);
+}
+function stopPolling(){ if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
+document.addEventListener("visibilitychange", () => { if (!document.hidden) loadRoom(true); });
+
+/* ========================== 5 · NAVIGAZIONE ========================== */
+const VIEWS = {
+  board:{ v:"v-board", f:"btn-add-task" },
+  compose:{ v:"v-compose", f:"s1" },
+  settings:{ v:"v-settings", f:"k-set" }
+};
 function go(key, announce){
   const next = VIEWS[key]; if (!next) return;
   const paint = () => {
     Object.values(VIEWS).forEach(x => el(x.v).hidden = true);
-    ["r-compose","r-task"].forEach(r => el(r).hidden = true);
-    el(next.r).hidden = false;
     el(next.v).hidden = false;
-    document.body.classList.toggle("receiving", next.recv);
-
     const node = el(next.v);
     node.classList.add("enter");
     requestAnimationFrame(() => requestAnimationFrame(() => node.classList.remove("enter")));
@@ -1019,21 +874,14 @@ function go(key, announce){
       reduced() ? 0 : 260);
     if (announce) el("live").textContent = announce;
     current = key;
+    if (key === "board") renderBoard();
+    if (key === "settings"){ el("room-link-display").textContent = roomUrl(); }
   };
   if (current && !reduced()){
     const old = el(VIEWS[current].v);
     old.classList.add("leave");
     setTimeout(() => { old.classList.remove("leave"); paint(); }, 190);
   } else paint();
-}
-
-function closeRing(){
-  document.body.classList.add("closed");
-  if (reduced() || !el("halo").animate) return;
-  el("halo").animate([{opacity:.5,transform:"scale(1)"},{opacity:0,transform:"scale(1.3)"}],
-    {duration:1100, easing:"cubic-bezier(.22,.9,.3,1)", delay:150});
-  el("avatar").animate([{transform:"scale(1)"},{transform:"scale(1.06)"},{transform:"scale(1)"}],
-    {duration:700, easing:"cubic-bezier(.22,.9,.3,1)", delay:350});
 }
 
 let tTimer = null;
@@ -1044,26 +892,7 @@ function toast(text){
   tTimer = setTimeout(() => n.classList.remove("show"), 4600);
 }
 
-/* ========================== 5 · COMPOSITORE ========================== */
-function paintHeader(showCount){
-  el("avatar").textContent = (setup.name || "?").charAt(0).toUpperCase();
-  el("who").textContent = setup.name || "—";
-  el("meta").textContent = setup.place || "";
-  el("s2-hint").textContent = TP().step2Hint(setup.name || (LANG === "it" ? "lei" : "her"));
-  el("count").hidden = !showCount;
-  el("count-label").textContent = TP().countLabel(setup.size);
-}
-
-function checkBase(){
-  const ok = !!normalizeBase(setup.base);
-  el("warn").hidden = ok;
-  if (!ok){
-    el("warn-text").textContent = detectBase() ? TP().warnNoBaseDetected : TP().warnNoBasePreview;
-  }
-  return ok;
-}
-
-/* ========================== 5b · LINGUA ========================== */
+/* ========================== 6 · LINGUA ========================== */
 function applyStaticI18n(){
   const s = S();
   document.querySelectorAll("[data-i18n]").forEach(n => {
@@ -1082,13 +911,11 @@ function applyStaticI18n(){
     b.setAttribute("aria-pressed", String(b.dataset.lang === LANG)));
   el("btn-coffee").href = COFFEE_URL || "#";
 }
-
 function rerenderCurrentView(){
-  if (current === "compose"){ renderComposerLists(); paintDetail(); paintHeader(true); refresh(); }
-  else if (current === "settings"){ paintBaseState(); }
-  else if (task && (current === "task" || current === "yes")){ paintTask(task); }
+  if (current === "board") renderBoard();
+  else if (current === "compose"){ renderComposerLists(); paintDetail(); }
+  else if (current === "settings"){ el("room-link-display").textContent = roomUrl(); }
 }
-
 function setLang(l, persist){
   LANG = l;
   if (persist) store.set(KEY_LANG, LANG);
@@ -1096,7 +923,6 @@ function setLang(l, persist){
   applyStaticI18n();
 }
 function applyLang(l){ setLang(l, true); rerenderCurrentView(); }
-
 el("lang-switch").onclick = () => { buzz(); applyLang(LANG === "it" ? "en" : "it"); };
 el("lang-pair").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
@@ -1106,315 +932,103 @@ el("btn-coffee").addEventListener("click", e => {
   if (!COFFEE_URL){ e.preventDefault(); toast(TP().toastCoffeeMissing); }
 });
 
-function renderComposerLists(){
-  el("tiles").innerHTML = TASKS.map(t =>
-    `<button class="tile" type="button" data-id="${t.id}" aria-pressed="false">
-       <span class="tile-head">${svg(t.icon)}<span class="tick" aria-hidden="true" hidden>✓</span></span>
-       <span class="tile-body"><b>${esc(t.t)}</b><small>${esc(t.h)}</small></span>
-     </button>`).join("");
-
-  el("whens").innerHTML = WHENS.map(w =>
-    `<button class="chip" type="button" data-id="${w.id}" aria-pressed="false">${esc(w.label)}</button>`).join("");
-
-  Array.from(el("tiles").children).forEach(x => {
-    const on = x.dataset.id === draft.task;
-    x.setAttribute("aria-pressed", String(on));
-    const tk = x.querySelector(".tick"); if (tk) tk.hidden = !on;
-  });
-  Array.from(el("whens").children).forEach(x =>
-    x.setAttribute("aria-pressed", String(x.dataset.id === draft.when)));
+/* ========================== 7 · BACHECA ========================== */
+function applyRoomHeader(){
+  const s = room.setup || {};
+  const name = s.name || setup.name || "";
+  const place = s.place || setup.place || "";
+  const size = s.size || setup.size || 0;
+  el("avatar").textContent = (name || "?").charAt(0).toUpperCase();
+  el("who").textContent = name || (LANG === "it" ? "La tua famiglia" : "Your family");
+  el("meta").textContent = place || "";
+  el("count").hidden = !size;
+  el("count-label").textContent = TP().countLabel(size);
 }
 
-function buildComposer(){
-  renderComposerLists();
-
-  el("tiles").addEventListener("click", e => {
-    const b = e.target.closest(".tile"); if (!b) return;
-    buzz(); draft.task = b.dataset.id;
-    Array.from(el("tiles").children).forEach(x => {
-      const on = x === b;
-      x.setAttribute("aria-pressed", String(on));
-      x.querySelector(".tick").hidden = !on;
-    });
-    paintDetail(); refresh();
-  });
-
-  el("whens").addEventListener("click", e => {
-    const b = e.target.closest(".chip"); if (!b) return;
-    buzz(); draft.when = b.dataset.id;
-    Array.from(el("whens").children).forEach(x => x.setAttribute("aria-pressed", String(x === b)));
-    const pick = draft.when === "giorno";
-    el("day-wrap").hidden = !pick;
-    if (pick) el("f-day").focus();
-    refresh();
-  });
-
-  el("p-input").addEventListener("change", e => addShots(e.target.files));
-  el("d-add").onclick = addItem;
-  el("d-draft").addEventListener("keydown", e => {
-    if (e.key === "Enter"){ e.preventDefault(); addItem(); }
-  });
-  el("d-value").addEventListener("input", e => { draft.texts[draft.task] = e.target.value; refresh(); });
-  el("f-day").addEventListener("input", e => { draft.day = e.target.value; refresh(); });
-  el("f-words").addEventListener("input", e => { draft.words = e.target.value; refresh(); });
-  el("warn-go").onclick = openSettings;
-}
-
-const MAX_VOCE = 80;
-
-function addItem(){
-  let v = el("d-draft").value.trim();
-  if (!v || !draft.task) return;
-
-  // Una voce della spesa è un prodotto, non un paragrafo: oltre gli 80
-  // caratteri diventa illeggibile sul telefono di chi la deve spuntare.
-  if (v.length > MAX_VOCE){
-    v = v.slice(0, MAX_VOCE).trim();
-    toast(TP().toastVoceAccorciata);
-  }
-
-  const gia = draft.lists[draft.task] = draft.lists[draft.task] || [];
-  if (gia.some(x => x.toLowerCase() === v.toLowerCase())){
-    el("d-draft").value = "";
-    toast(TP().toastGiaLista);
-    return;
-  }
-
-  gia.push(v);
-  el("d-draft").value = ""; el("d-draft").focus();
-  paintDetail(); refresh();
-}
-
-
-/* ==========================================================================
-   FOTO ALLEGATE
-   Un'immagine non entra in un link: servirebbero centinaia di migliaia di
-   caratteri. Viaggiano invece nella condivisione nativa, insieme al
-   messaggio, e finiscono nel gruppo sopra il link. Chi apre il compito
-   legge che le foto sono lì.
-   ========================================================================== */
-function addShots(files){
-  if (!draft.task) return;
-  const list = draft.shots[draft.task] || (draft.shots[draft.task] = []);
-  for (const f of files){
-    if (!f.type || !f.type.startsWith("image/")) continue;
-    if (list.length >= 4){ toast(TP().toastMaxFoto); break; }
-    list.push({ file:f, url:URL.createObjectURL(f) });
-  }
-  el("p-input").value = "";
-  paintShots(); refresh();
-}
-
-function clearShots(){
-  Object.values(draft.shots).flat().forEach(s => { try { URL.revokeObjectURL(s.url); } catch {} });
-  draft.shots = {};
-}
-
-function paintShots(){
-  const cfg = DETAILS[draft.task] || {};
-  const list = myShots();
-  el("shots").innerHTML =
-    list.map((s,i) =>
-      `<div class="shot"><img src="${s.url}" alt="Foto ${i+1}">
-         <button type="button" data-i="${i}" aria-label="Togli la foto ${i+1}">×</button></div>`).join("") +
-    (list.length < 4
-      ? `<button class="shot-add" type="button" id="shot-add" aria-label="${esc(cfg.photo || "Aggiungi una foto")}">${svg("camera")}</button>`
-      : "");
-  el("shots").querySelectorAll(".shot button").forEach(b => b.onclick = () => {
-    const i = +b.dataset.i, arr = myShots();
-    try { URL.revokeObjectURL(arr[i].url); } catch {}
-    arr.splice(i, 1);
-    paintShots(); refresh();
-  });
-  const add = el("shot-add");
-  if (add) add.onclick = () => el("p-input").click();
-}
-
-function paintDetail(){
-  const cfg = DETAILS[draft.task];
-  el("detail").hidden = !cfg;
-  if (!cfg) return;
-  el("d-label").textContent = cfg.label;
-  el("d-list").hidden = cfg.kind !== "list";
-  el("d-text").hidden = cfg.kind !== "text";
-
-  if (cfg.kind === "list"){
-    const items = draft.lists[draft.task] || [];
-    el("d-meta").textContent = items.length ? TP().itemCount(items.length) : (LANG === "it" ? "Facoltativo" : "Optional");
-    el("d-items").innerHTML = items.map((x,i) =>
-      `<div class="item"><span class="dot" aria-hidden="true"></span>
-         <span class="txt">${esc(x)}</span>
-         <button class="rm" type="button" data-i="${i}" aria-label="${LANG === "it" ? "Togli" : "Remove"} ${esc(x)}">×</button></div>`).join("");
-    el("d-items").querySelectorAll(".rm").forEach(b => b.onclick = () => {
-      draft.lists[draft.task].splice(+b.dataset.i, 1);
-      paintDetail(); refresh();
-    });
-    el("d-draft").placeholder = cfg.ph;
-  } else {
-    el("d-meta").textContent = LANG === "it" ? "Facoltativo" : "Optional";
-    el("d-value").value = draft.texts[draft.task] || "";
-    el("d-value").placeholder = cfg.ph;
-    el("d-note").textContent = cfg.note || "";
-  }
-
-  el("d-photo").hidden = !cfg.photo;
-  if (cfg.photo){
-    el("p-label").textContent = cfg.photo;
-    el("p-note").textContent = cfg.photoNote || "";
-    paintShots();
-  }
-}
-
-function taskPhrase(){
-  const t = TASKS.find(x => x.id === draft.task); if (!t) return null;
-  if (t.id === "altro") return (draft.texts.altro || "").trim() || null;
-  return t.p;
-}
-function whenPhrase(){
-  const w = WHENS.find(x => x.id === draft.when); if (!w) return null;
-  if (w.id === "giorno"){
-    if (!draft.day) return null;
-    const d = new Date(draft.day + "T12:00:00");
-    if (isNaN(d.getTime())) return null;
-    return new Intl.DateTimeFormat(I18N[LANG].locale,
-      { weekday:"long", day:"numeric", month:"long", timeZone:"Europe/Rome" }).format(d);
-  }
-  return w.p;
-}
-function detailLine(){
-  const cfg = DETAILS[draft.task]; if (!cfg) return "";
-  if (cfg.kind === "list") return (draft.lists[draft.task] || []).join(" · ");
-  if (draft.task === "altro") return "";
-  return (draft.texts[draft.task] || "").trim();
-}
-
-function payload(){
-  const t = TASKS.find(x => x.id === draft.task) || {};
-  const cfg = DETAILS[draft.task] || {};
-  return {
-    n:setup.name, p:setup.place, k:t.icon || "altro",
-    t: draft.task === "altro" ? (draft.texts.altro || "").trim() : (t.t || ""),
-    w: whenPhrase() || "", d: t.d || "",
-    l: cfg.kind === "list" ? (draft.lists[draft.task] || []) : [],
-    ll: cfg.kind === "list" && (draft.lists[draft.task] || []).length ? cfg.label : "",
-    x: cfg.kind === "text" && draft.task !== "altro" ? (draft.texts[draft.task] || "").trim() : "",
-    m: draft.words.trim(),
-    f: myShots().length,
-    g: LANG
-  };
-}
-
-/* FIX v3 — payload in query string: più affidabile del frammento
-   quando il link passa da un client di messaggistica all'altro. */
-function linkFor(){
-  const base = normalizeBase(setup.base);
-  if (!base) return "";
-  const p = payload();
-  return base + "?t=" + pack(p);
-}
-
-function message(){
-  const p = payload(), tp = taskPhrase(), wp = whenPhrase(), dl = detailLine();
-  const lines = TP().msgLines({ name:p.n, tp, wp, dl, nFoto:myShots().length, words:p.m });
-  lines.push(linkFor(), "", TP().msgTail);
-  return lines.join("\n");
-}
-
-
-/* ==========================================================================
-   BOZZA
-   Chi compone la richiesta viene interrotto di continuo: suona il telefono,
-   la nonna richiama, l'app va in background e il sistema scarica la pagina.
-   Ricominciare da capo è il modo più rapido per far abbandonare il prodotto.
-   Le foto non si possono salvare (sono file vivi del sistema): se c'erano,
-   lo diciamo invece di far finta di niente.
-   ========================================================================== */
-const DURATA_BOZZA = 12 * 60 * 60 * 1000;   // 12 ore
-
-function saveDraft(){
-  if (!draft.task && !draft.when && !draft.words){ store.del(KEY_DRAFT); return; }
-  store.set(KEY_DRAFT, {
-    at: Date.now(),
-    task: draft.task, lists: draft.lists, texts: draft.texts,
-    when: draft.when, day: draft.day, words: draft.words,
-    foto: Object.keys(draft.shots).length ? 1 : 0
-  });
-}
-
-function restoreDraft(){
-  const b = store.get(KEY_DRAFT, null);
-  if (!b || !b.at || Date.now() - b.at > DURATA_BOZZA){ store.del(KEY_DRAFT); return false; }
-
-  draft.task  = b.task || null;
-  draft.lists = b.lists || {};
-  draft.texts = b.texts || {};
-  draft.when  = b.when || null;
-  draft.day   = b.day || "";
-  draft.words = b.words || "";
-
-  Array.from(el("tiles").children).forEach(x => {
-    const on = x.dataset.id === draft.task;
-    x.setAttribute("aria-pressed", String(on));
-    const tk = x.querySelector(".tick"); if (tk) tk.hidden = !on;
-  });
-  Array.from(el("whens").children).forEach(x =>
-    x.setAttribute("aria-pressed", String(x.dataset.id === draft.when)));
-
-  el("f-words").value = draft.words;
-  el("f-day").value = draft.day;
-  el("day-wrap").hidden = draft.when !== "giorno";
-  paintDetail();
-
-  if (b.foto) toast(TP().toastBozza);
-  return true;
-}
-
-function refresh(){
-  saveDraft();
-  const tp = taskPhrase(), wp = whenPhrase();
-  const baseOk = checkBase();
-  const ready = !!tp && !!wp && baseOk;
-
-  el("sentence").textContent = !tp
-    ? TP().sentencePending(setup.name)
-    : TP().sentenceReady(setup.name, tp, wp);
-
-  const dl = detailLine();
-  el("sentence-sub").hidden = !dl;
-  el("sentence-sub").textContent = dl;
-
-  el("btn-send").setAttribute("aria-disabled", String(!ready));
-  el("action-hint").textContent =
-    !baseOk ? TP().hintNoBase
-    : !tp ? (draft.task === "altro" ? TP().hintNeedTaskAltro : TP().hintNeedTask)
-    : !wp ? (draft.when === "giorno" ? TP().hintNeedDay : TP().hintNeedWhen)
-    : linkFor().length > 700
-      // Non è un limite tecnico: è che 700 caratteri di codice nel messaggio
-      // sono sette righe illeggibili, e chi le riceve si insospettisce.
-      ? TP().hintLongList
-      : TP().hintReady(setup.size, setup.name);
-}
-
-/* Le foto viaggiano qui: navigator.share le passa a WhatsApp insieme al
-   testo. Se il dispositivo non lo supporta, il messaggio parte lo stesso
-   e avvisiamo che le immagini vanno allegate a mano.
-   L'annullamento volontario non riapre WhatsApp alle spalle dell'utente. */
-async function share(text, files){
-  const data = { text };
-  if (files && files.length){
-    try { if (navigator.canShare && navigator.canShare({ files })) data.files = files; } catch {}
-  }
-  if (navigator.share){
-    try { await navigator.share(data); return data.files ? "shared" : (files && files.length ? "text-only" : "shared"); }
-    catch (err){
-      if (err && (err.name === "AbortError" || err.name === "NotAllowedError")) return "cancelled";
+function taskDisplay(t){
+  const def = TASKS.find(x => x.id === t.taskType);
+  const genericTitle = def ? def.t : t.taskType;
+  const title = (t.taskType === "altro" && t.detail) ? t.detail : genericTitle;
+  const w = WHENS.find(x => x.id === t.when);
+  let whenText = "";
+  if (t.when === "giorno" && t.day){
+    const d = new Date(t.day + "T12:00:00");
+    if (!isNaN(d.getTime())){
+      whenText = new Intl.DateTimeFormat(I18N[LANG].locale,
+        { weekday:"long", day:"numeric", month:"long", timeZone:"Europe/Rome" }).format(d);
     }
+  } else if (w) whenText = w.label;
+  const noteParts = [];
+  if (t.list && t.list.length) noteParts.push(t.list.join(" · "));
+  if (t.taskType !== "altro" && t.detail) noteParts.push(t.detail);
+  if (t.note) noteParts.push(t.note);
+  return { title, whenText, note: noteParts.join(" — "), icon: (def && def.icon) || "altro" };
+}
+
+function taskRow(t){
+  const d = taskDisplay(t);
+  const metaBits = [d.whenText, d.note].filter(Boolean).join(" · ");
+  let actions = "";
+  if (t.status === "open"){
+    actions = `<button class="chip-btn primary" data-act="claim" data-id="${t.id}">${esc(S().yesBtn)}</button>`;
+  } else if (t.status === "claimed"){
+    actions = `<button class="chip-btn primary" data-act="done" data-id="${t.id}">${esc(S().doneBtn)}</button>
+               <button class="chip-btn" data-act="unclaim" data-id="${t.id}">${esc(S().unclaimBtn)}</button>`;
+  } else {
+    actions = `<button class="chip-btn" data-act="reopen" data-id="${t.id}">${esc(S().reopenBtn)}</button>`;
+  }
+  const who = t.status !== "open" && t.claimedBy
+    ? `<span class="task-row-who">${esc(TP().turnLabel(t.claimedBy))}</span>` : "";
+  return `<div class="task-row ${t.status === "done" ? "done" : ""}" data-id="${t.id}">
+    <div class="task-row-ico">${svg(d.icon)}</div>
+    <div class="task-row-body"><b>${esc(d.title)}</b><small>${esc(metaBits)}</small>${who}</div>
+    <div class="task-row-actions">${actions}</div>
+  </div>`;
+}
+
+function renderBoard(){
+  const tasks = room.tasks || [];
+  const open = tasks.filter(t => t.status === "open").sort((a,b) => a.createdAt - b.createdAt);
+  const claimed = tasks.filter(t => t.status === "claimed").sort((a,b) => a.createdAt - b.createdAt);
+  const done = tasks.filter(t => t.status === "done").sort((a,b) => (b.doneAt||0) - (a.doneAt||0));
+
+  el("list-open").innerHTML = open.map(taskRow).join("");
+  el("empty-open").hidden = open.length !== 0;
+  el("blk-claimed").hidden = claimed.length === 0;
+  el("list-claimed").innerHTML = claimed.map(taskRow).join("");
+  el("blk-done").hidden = done.length === 0;
+  el("list-done").innerHTML = done.map(taskRow).join("");
+}
+
+function boardAction(e){
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const act = b.dataset.act, id = b.dataset.id;
+  buzz();
+  const anon = LANG === "it" ? "Qualcuno" : "Someone";
+  let p;
+  if (act === "claim") p = apiPost({ action:"claim", id, by: myName || anon });
+  else if (act === "unclaim") p = apiPost({ action:"unclaim", id });
+  else if (act === "reopen") p = apiPost({ action:"reopen", id });
+  else if (act === "done") p = apiPost({ action:"done", id });
+  else return;
+  withRoom(p).then(() => renderBoard()).catch(() => toast(TP().loadError));
+}
+["list-open","list-claimed","list-done"].forEach(id => el(id).addEventListener("click", boardAction));
+
+el("btn-clear-done").onclick = () => {
+  buzz();
+  withRoom(apiPost({ action:"clearDone" })).then(() => renderBoard()).catch(() => toast(TP().loadError));
+};
+
+async function share(text){
+  if (navigator.share){
+    try { await navigator.share({ text }); return "shared"; }
+    catch (err){ if (err && (err.name === "AbortError" || err.name === "NotAllowedError")) return "cancelled"; }
   }
   const w = window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener");
   if (!w) copy(text, TP().toastMessaggioCopiato);
-  return files && files.length ? "text-only" : "opened";
+  return "opened";
 }
-
 async function copy(text, msg){
   try { await navigator.clipboard.writeText(text); toast(msg || TP().toastCopiato); }
   catch {
@@ -1426,206 +1040,165 @@ async function copy(text, msg){
     a.remove();
   }
 }
+el("btn-share-board").onclick = () => { buzz(); share(TP().shareRoomMsg(roomUrl())); };
+el("btn-share-room").onclick  = () => { buzz(); share(TP().shareRoomMsg(roomUrl())); };
+el("btn-copy-room").onclick   = () => { buzz(); copy(roomUrl(), TP().toastLinkCopiato); };
 
-el("btn-send").onclick = () => {
-  if (el("btn-send").getAttribute("aria-disabled") === "true"){
-    buzz();
-    if (!checkBase()){ openSettings(); toast(TP().toastPrimaIndirizzo); }
-    else toast(el("action-hint").textContent);
-    return;
-  }
-  buzz();
-  const dl = detailLine();
-  el("sent-sentence").textContent = el("sentence").textContent;
-  el("sent-sub").hidden = !dl; el("sent-sub").textContent = dl;
-  el("sent-confirm").textContent = TP().sentConfirm(setup.size);
-  share(message(), myShots().map(x => x.file)).then(res => {
-    if (res === "cancelled") return;
-    if (res === "text-only" && myShots().length)
-      toast(TP().toastFotoAMano);
-    store.del(KEY_DRAFT);
-    go("sent", TP().announceRichiestaMandata);
-  });
-};
+/* ========================== 8 · COMPOSITORE ========================== */
+function renderComposerLists(){
+  el("tiles").innerHTML = TASKS.map(t =>
+    `<button class="tile" type="button" data-id="${t.id}" aria-pressed="false">
+       <span class="tile-head">${svg(t.icon)}<span class="tick" aria-hidden="true" hidden>✓</span></span>
+       <span class="tile-body"><b>${esc(t.t)}</b><small>${esc(t.h)}</small></span>
+     </button>`).join("");
+  el("whens").innerHTML = WHENS.map(w =>
+    `<button class="chip" type="button" data-id="${w.id}" aria-pressed="false">${esc(w.label)}</button>`).join("");
+}
 
-el("btn-resend").onclick = () => { buzz(); share(message(), myShots().map(x => x.file)); };
-el("btn-copy").onclick   = () => { buzz(); copy(linkFor(), TP().toastLinkCopiato); };
-el("btn-edit").onclick   = () => { buzz(); go("compose"); };
-el("btn-reset").onclick  = () => {
-  buzz();
-  clearShots();
-  draft = { task:null, lists:{}, texts:{}, when:null, day:"", words:"", shots:{} };
+function resetComposer(){
+  draft = { task:null, lists:{}, texts:{}, when:null, day:"", words:"" };
   el("f-words").value = ""; el("f-day").value = "";
-  el("d-photo").hidden = true;
   el("d-value").value = ""; el("d-draft").value = "";
   el("day-wrap").hidden = true; el("detail").hidden = true;
-  Array.from(el("tiles").children).forEach(x => {
-    x.setAttribute("aria-pressed","false"); x.querySelector(".tick").hidden = true;
+  renderComposerLists();
+}
+
+function buildComposer(){
+  renderComposerLists();
+  el("tiles").addEventListener("click", e => {
+    const b = e.target.closest(".tile"); if (!b) return;
+    buzz(); draft.task = b.dataset.id;
+    Array.from(el("tiles").children).forEach(x => {
+      const on = x === b;
+      x.setAttribute("aria-pressed", String(on));
+      x.querySelector(".tick").hidden = !on;
+    });
+    paintDetail();
   });
-  Array.from(el("whens").children).forEach(x => x.setAttribute("aria-pressed","false"));
-  store.del(KEY_DRAFT);
-  refresh(); go("compose", TP().announceNuovaRichiesta);
+  el("whens").addEventListener("click", e => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    buzz(); draft.when = b.dataset.id;
+    Array.from(el("whens").children).forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    const pick = draft.when === "giorno";
+    el("day-wrap").hidden = !pick;
+    if (pick) el("f-day").focus();
+  });
+  el("d-add").onclick = addItem;
+  el("d-draft").addEventListener("keydown", e => {
+    if (e.key === "Enter"){ e.preventDefault(); addItem(); }
+  });
+  el("d-value").addEventListener("input", e => { draft.texts[draft.task] = e.target.value; });
+  el("f-day").addEventListener("input", e => { draft.day = e.target.value; });
+  el("f-words").addEventListener("input", e => { draft.words = e.target.value; });
+}
+
+const MAX_VOCE = 80;
+function addItem(){
+  let v = el("d-draft").value.trim();
+  if (!v || !draft.task) return;
+  if (v.length > MAX_VOCE){ v = v.slice(0, MAX_VOCE).trim(); toast(TP().toastVoceAccorciata); }
+  const gia = draft.lists[draft.task] = draft.lists[draft.task] || [];
+  if (gia.some(x => x.toLowerCase() === v.toLowerCase())){
+    el("d-draft").value = ""; toast(TP().toastGiaLista); return;
+  }
+  gia.push(v);
+  el("d-draft").value = ""; el("d-draft").focus();
+  paintDetail();
+}
+
+function paintDetail(){
+  const cfg = DETAILS[draft.task];
+  el("detail").hidden = !cfg;
+  if (!cfg) return;
+  el("d-label").textContent = cfg.label;
+  el("d-list").hidden = cfg.kind !== "list";
+  el("d-text").hidden = cfg.kind !== "text";
+  if (cfg.kind === "list"){
+    const items = draft.lists[draft.task] || [];
+    el("d-meta").textContent = items.length ? TP().itemCount(items.length) : (LANG === "it" ? "Facoltativo" : "Optional");
+    el("d-items").innerHTML = items.map((x,i) =>
+      `<div class="item"><span class="dot" aria-hidden="true"></span>
+         <span class="txt">${esc(x)}</span>
+         <button class="rm" type="button" data-i="${i}" aria-label="${LANG === "it" ? "Togli" : "Remove"} ${esc(x)}">×</button></div>`).join("");
+    el("d-items").querySelectorAll(".rm").forEach(b => b.onclick = () => {
+      draft.lists[draft.task].splice(+b.dataset.i, 1);
+      paintDetail();
+    });
+    el("d-draft").placeholder = cfg.ph;
+  } else {
+    el("d-meta").textContent = LANG === "it" ? "Facoltativo" : "Optional";
+    el("d-value").value = draft.texts[draft.task] || "";
+    el("d-value").placeholder = cfg.ph;
+    el("d-note").textContent = cfg.note || "";
+  }
+}
+
+el("btn-add-task").onclick = () => { buzz(); resetComposer(); go("compose"); };
+el("btn-cancel-compose").onclick = () => { buzz(); go("board"); };
+
+el("btn-send").onclick = async () => {
+  if (!draft.task){ buzz(); toast(TP().hintNeedTask); return; }
+  buzz();
+  const cfg = DETAILS[draft.task] || {};
+  const task = {
+    taskType: draft.task,
+    when: draft.when || "",
+    day: draft.day || "",
+    detail: cfg.kind === "text" ? (draft.texts[draft.task] || "").trim() : "",
+    list: cfg.kind === "list" ? (draft.lists[draft.task] || []) : [],
+    note: (draft.words || "").trim(),
+    lang: LANG
+  };
+  try {
+    await withRoom(apiPost({ action:"addTask", task }));
+    go("board", TP().announceAggiunto);
+    toast(TP().announceAggiunto);
+  } catch (e){
+    toast(TP().loadError);
+  }
 };
 
+/* ========================== 9 · IMPOSTAZIONI ========================== */
 function openSettings(){
   buzz();
-  el("f-base").value  = setup.base;
-  el("f-name").value  = setup.name;
+  el("f-myname").value = myName;
+  el("f-name").value = setup.name;
   el("f-place").value = setup.place;
-  el("f-size").value  = setup.size;
-  el("f-cond").value  = setup.conditions;
-  paintBaseState();
+  el("f-size").value = setup.size;
+  el("f-cond").value = setup.conditions;
+  el("room-link-display").textContent = roomUrl();
   go("settings");
 }
 el("btn-settings").onclick = openSettings;
+el("btn-back-board").onclick = () => { buzz(); go("board"); };
 
-function paintBaseState(){
-  const n = normalizeBase(el("f-base").value);
-  el("base-state").textContent = n ? TP().baseStateOk(n) : TP().baseStateInvalid;
-}
-el("f-base").addEventListener("input", paintBaseState);
-
-el("btn-save").onclick = () => {
+el("btn-save").onclick = async () => {
   buzz();
-  const base = normalizeBase(el("f-base").value);
+  myName = el("f-myname").value.trim();
+  store.set(KEY_MYNAME, myName);
   setup = {
-    name: el("f-name").value.trim() || "—",
+    name: el("f-name").value.trim(),
     place: el("f-place").value.trim(),
-    size: Math.max(1, Math.min(20, parseInt(el("f-size").value, 10) || 4)),
-    conditions: el("f-cond").value.trim(),
-    base: base
+    size: Math.max(0, Math.min(30, parseInt(el("f-size").value, 10) || 0)),
+    conditions: el("f-cond").value.trim()
   };
   store.set(KEY_SETUP, setup);
-  paintHeader(true); refresh();
-  go("compose", TP().announceImpostazioniSalvate);
-  toast(base ? TP().toastSalvatoOk : TP().toastSalvatoInvalid);
+  try {
+    await withRoom(apiPost({ action:"saveSetup", setup:{ name:setup.name, place:setup.place, size:setup.size, lang:LANG } }));
+  } catch (e){}
+  applyRoomHeader();
+  go("board", TP().announceImpostazioniSalvate);
+  toast(TP().toastSalvatoOk);
 };
 
-/* ========================== 6 · CHI RICEVE ========================== */
-function paintTask(t){
-  el("avatar").textContent = (t.n || "?").charAt(0).toUpperCase();
-  el("who").textContent = t.n || "—";
-  el("meta").textContent = t.p || "";
-  el("count").hidden = true;
-  document.title = `${t.n} — ${t.t}`;
-
-  el("t-eyebrow").textContent = t.w || S().taskEyebrowFallback;
-  el("t-icon").innerHTML = svg(t.k);
-  el("t-title").textContent = t.t;
-  el("t-when").textContent = t.w || "";
-  el("t-dur").textContent = t.d || "";
-  el("t-dur").hidden = !t.d;
-
-  const hasList = Array.isArray(t.l) && t.l.length > 0;
-
-  // Prima del sì la lista è informativa: caselle vuote sembrerebbero un compito già iniziato.
-  el("t-list").hidden = !hasList;
-  if (hasList){
-    el("t-list-label").textContent = t.ll || S().listLabelFallback;
-    el("t-items").innerHTML = t.l.map(x =>
-      `<div class="item"><span class="dot" aria-hidden="true"></span>
-         <span class="txt">${esc(x)}</span></div>`).join("");
-  }
-
-  // Il dettaglio operativo NON va nel riquadro delle sue parole: sono due voci diverse.
-  el("t-info").hidden = !t.x;
-  el("t-info").textContent = t.x || "";
-
-  // Le immagini non stanno nel link: stanno nel gruppo, sopra il messaggio.
-  el("t-attach").hidden = !t.f;
-  if (t.f) el("t-attach").textContent = t.f === 1 ? TP().attachOne : TP().attachMany(t.f);
-
-  el("t-words").hidden = !t.m;
-  if (t.m){
-    el("t-words-text").textContent = "\u201C" + t.m + "\u201D";
-    el("t-words-from").textContent = t.n;
-  }
-
-  el("s-yes").textContent = TP().soLoSa(t.n);
-  el("y-title").textContent = t.t;
-  el("y-when").textContent = t.w ? "· " + t.w : "";
-
-  el("y-list").hidden = !hasList;
-  if (hasList) renderTicks(t);
-}
-
-function tickKey(t){ return KEY_TICKS + b64([t.t, t.w, t.l]).slice(0, 40); }
-
-function renderTicks(t){
-  ticks = store.get(tickKey(t), {});
-  el("y-checks").innerHTML = t.l.map((x,i) =>
-    `<button class="check" type="button" data-i="${i}" aria-pressed="${!!ticks[i]}">
-       <span class="box" aria-hidden="true">✓</span><span class="txt">${esc(x)}</span></button>`).join("");
-  el("y-checks").querySelectorAll(".check").forEach(b => b.onclick = () => {
-    const i = b.dataset.i;
-    ticks[i] = !ticks[i];
-    b.setAttribute("aria-pressed", String(!!ticks[i]));
-    store.set(tickKey(t), ticks);
-    buzz();
-  });
-}
-
-el("btn-yes").onclick  = () => { buzz(); closeRing(); go("yes", TP().announceHaiPreso); };
-el("btn-nope").onclick = () => { buzz(); go("no", TP().announceVaBene); };
-
-function tell(text, kicker, sub){
-  share(text);
-  el("k-bye").textContent = kicker;
-  el("s-bye").textContent = sub;
-  setTimeout(() => go("bye"), 400);
-}
-el("btn-tell").onclick = () =>
-  tell(TP().tellYesMsg(task.t, task.w), TP().tellYesKicker, TP().tellYesSub(task.n));
-el("btn-tell-no").onclick = () =>
-  tell(TP().tellNoMsg(task.t), TP().tellNoKicker, TP().tellNoSub);
-el("btn-yes-bye").onclick = () => {
-  buzz(); el("k-bye").textContent = TP().yesByeKicker;
-  el("s-bye").textContent = TP().tellYesSub(task.n); go("bye");
-};
-el("btn-no-bye").onclick = () => {
-  buzz(); el("k-bye").textContent = TP().noByeKicker; el("s-bye").textContent = ""; go("bye");
-};
-
-/* ========================== 7 · ROUTER ========================== */
-function readToken(){
-  const q = new URLSearchParams(location.search).get("t");
-  if (q) return { tok:q, extra:new URLSearchParams(location.search).get("m") || "" };
-  const h = location.hash || "";
-  if (h.startsWith("#/t/")) return { tok:h.slice(4), extra:"" };
-  return null;
-}
-
-function route(){
-  const found = readToken();
-
-  if (found){
-    try {
-      task = unpack(found.tok);
-      if (found.extra) task.m = found.extra;
-      if (!task || !task.t) throw new Error("vuoto");
-      if (task.g === "it" || task.g === "en") setLang(task.g, false);
-      paintTask(task);
-      go("task");
-    } catch {
-      document.body.classList.add("receiving");
-      el("k-bye").textContent = TP().brokenLinkTitle;
-      el("s-bye").textContent = TP().brokenLinkSub;
-      go("bye");
-    }
-    return;
-  }
-
-  paintHeader(true);
-  refresh();
-  go("compose");
-}
-window.addEventListener("hashchange", route);
-
-/* ========================== 8 · AVVIO ========================== */
+/* ========================== 10 · AVVIO ========================== */
 applyStaticI18n();
 buildComposer();
-if (!readToken()) restoreDraft();
-route();
+ROOM_CODE = resolveRoomCode();
+applyRoomHeader();
+go("board");
+loadRoom(false);
+startPolling();
 </script>
 </body>
 </html>
