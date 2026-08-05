@@ -7,6 +7,10 @@
 <title>Il Cerchio</title>
 <meta name="theme-color" content="#F3F0E9" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#15181A" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Il Cerchio">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -421,12 +425,21 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
           <h2 class="step" id="k-waiting" tabindex="-1" data-i18n="waitingTitle">Qualcuno deve farti entrare</h2>
           <p class="hint" data-i18n="waitingHint">Non appena una persona del cerchio ti autorizza, questa pagina si aggiorna da sola.</p>
         </div>
+        <button class="btn ghost" id="btn-nudge-join" type="button" data-i18n="whatsappNudgeJoin">Fallo sapere nel gruppo</button>
         <button class="btn quiet" id="btn-cancel-join" type="button" data-i18n="cancelJoinBtn">Annulla richiesta</button>
       </div>
     </div>
 
     <!-- ============ BACHECA ============ -->
     <div class="view" id="v-board" hidden>
+
+      <div class="room-box" id="nudge-box" hidden style="margin-bottom:18px">
+        <p class="lbl" id="nudge-text" data-i18n="whatsappNudgeTask">Fai sapere al gruppo?</p>
+        <div class="pills">
+          <button class="pill" id="btn-nudge-share" type="button" data-i18n="shareRoomBtn">Condividi su WhatsApp</button>
+          <button class="pill bare" id="btn-nudge-skip" type="button" data-i18n="skipBtn">No, salta</button>
+        </div>
+      </div>
 
       <button class="btn primary" id="btn-add-task" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -556,6 +569,27 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
       </div>
 
       <div class="block">
+        <p class="eyebrow" data-i18n="notifyEyebrow">Notifiche</p>
+        <div id="notify-off" hidden>
+          <p class="hint" data-i18n="notifyHint">Ricevi un avviso quando qualcuno chiede di entrare o aggiunge un compito.</p>
+          <button class="btn ghost" id="btn-notify-on" type="button" style="margin-top:12px" data-i18n="notifyBtn">Attiva le notifiche</button>
+        </div>
+        <div id="notify-on" hidden>
+          <p class="hint" data-i18n="notifyOnHint">Le notifiche sono attive su questo telefono.</p>
+          <button class="btn quiet" id="btn-notify-off" type="button" data-i18n="notifyOffBtn">Disattiva</button>
+        </div>
+        <div id="notify-ios-hint" hidden>
+          <p class="hint" data-i18n="notifyIosHint">Su iPhone funzionano solo se aggiungi questa pagina alla schermata Home: tocca Condividi, poi "Aggiungi a Home".</p>
+        </div>
+        <div id="notify-unsupported" hidden>
+          <p class="hint" data-i18n="notifyUnsupportedHint">Questo browser non supporta le notifiche.</p>
+        </div>
+        <div id="notify-denied" hidden>
+          <p class="hint" data-i18n="notifyDeniedHint">Le notifiche sono bloccate per questo sito. Per attivarle, cambia il permesso dalle impostazioni del browser.</p>
+        </div>
+      </div>
+
+      <div class="block">
         <p class="eyebrow" data-i18n="sharedInfoEyebrow">Informazioni condivise</p>
         <div>
           <label class="lbl" for="f-name" data-i18n="nameLabel">Come si chiama</label>
@@ -668,6 +702,17 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
     myNameEyebrow:"Il tuo nome", sharedInfoEyebrow:"Informazioni condivise",
     privateNotesEyebrow:"Note per te", langEyebrow:"Lingua",
     approveBtn:"Accetta", denyBtn:"Rifiuta",
+    notifyEyebrow:"Notifiche",
+    notifyHint:"Ricevi un avviso quando qualcuno chiede di entrare o aggiunge un compito.",
+    notifyBtn:"Attiva le notifiche",
+    notifyOnHint:"Le notifiche sono attive su questo telefono.",
+    notifyOffBtn:"Disattiva",
+    notifyIosHint:"Su iPhone funzionano solo se aggiungi questa pagina alla schermata Home: tocca Condividi, poi \"Aggiungi a Home\".",
+    notifyUnsupportedHint:"Questo browser non supporta le notifiche.",
+    notifyDeniedHint:"Le notifiche sono bloccate per questo sito. Per attivarle, cambia il permesso dalle impostazioni del browser.",
+    toastNotifyOn:"Notifiche attive.", toastNotifyOff:"Notifiche disattivate.",
+    whatsappNudgeTask:"Fai sapere al gruppo?", whatsappNudgeJoin:"Fallo sapere nel gruppo",
+    skipBtn:"No, salta",
     toastRichiestaInviata:"Richiesta inviata.", toastBenvenuto:"Sei nel cerchio.",
     toastUscito:"Sei uscito dal cerchio."
   },
@@ -710,6 +755,8 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
     itemCount: n => `${n} ${n === 1 ? "cosa" : "cose"}`,
     turnLabel: name => `Tocca a ${name}`,
     shareRoomMsg: link => `Guarda la bacheca su Il Cerchio: ${link}`,
+    shareTaskMsg: (title, when, link) => `Nuovo compito: ${title}${when ? ", " + when : ""}.\n${link}`,
+    shareJoinMsg: link => `Ho chiesto di entrare nel cerchio, puoi autorizzarmi? ${link}`,
     loadError:"Controlla la connessione e riprova.",
     hintNeedTask:"Scegli cosa serve prima di aggiungere.",
     toastVoceAccorciata:"Voce accorciata: tienile brevi.",
@@ -766,6 +813,17 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
     myNameEyebrow:"Your name", sharedInfoEyebrow:"Shared information",
     privateNotesEyebrow:"Notes for you", langEyebrow:"Language",
     approveBtn:"Accept", denyBtn:"Decline",
+    notifyEyebrow:"Notifications",
+    notifyHint:"Get a heads-up when someone asks to join or adds a task.",
+    notifyBtn:"Turn on notifications",
+    notifyOnHint:"Notifications are on for this phone.",
+    notifyOffBtn:"Turn off",
+    notifyIosHint:"On iPhone these only work if you add this page to your Home Screen: tap Share, then \"Add to Home Screen\".",
+    notifyUnsupportedHint:"This browser doesn't support notifications.",
+    notifyDeniedHint:"Notifications are blocked for this site. To turn them on, change the permission in your browser settings.",
+    toastNotifyOn:"Notifications on.", toastNotifyOff:"Notifications off.",
+    whatsappNudgeTask:"Let the group know?", whatsappNudgeJoin:"Let the group know",
+    skipBtn:"No, skip",
     toastRichiestaInviata:"Request sent.", toastBenvenuto:"You're in the circle.",
     toastUscito:"You left the circle."
   },
@@ -808,6 +866,8 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
     itemCount: n => `${n} ${n === 1 ? "thing" : "things"}`,
     turnLabel: name => `${name}'s turn`,
     shareRoomMsg: link => `Check out the Il Cerchio board: ${link}`,
+    shareTaskMsg: (title, when, link) => `New task: ${title}${when ? ", " + when : ""}.\n${link}`,
+    shareJoinMsg: link => `I asked to join the circle, can you let me in? ${link}`,
     loadError:"Check your connection and try again.",
     hintNeedTask:"Choose what's needed before adding.",
     toastVoceAccorciata:"Item shortened: keep them brief.",
@@ -1277,10 +1337,23 @@ el("btn-send").onclick = async () => {
     await withRoom(apiPost({ action:"addTask", task }));
     go("board", TP().announceAggiunto);
     toast(TP().announceAggiunto);
+    const d = taskDisplay(task);
+    showNudge(TP().shareTaskMsg(d.title, d.whenText, roomUrl()));
   } catch (e){
     toast(TP().loadError);
   }
 };
+
+/* ========================== 9b · AVVISO WHATSAPP ========================== */
+let pendingNudgeMsg = "";
+function showNudge(msg){
+  pendingNudgeMsg = msg;
+  el("nudge-box").hidden = false;
+}
+function hideNudge(){ el("nudge-box").hidden = true; pendingNudgeMsg = ""; }
+el("btn-nudge-share").onclick = () => { buzz(); share(pendingNudgeMsg); hideNudge(); };
+el("btn-nudge-skip").onclick  = () => { buzz(); hideNudge(); };
+el("btn-nudge-join").onclick  = () => { buzz(); share(TP().shareJoinMsg(roomUrl())); };
 
 /* ========================== 9 · IMPOSTAZIONI ========================== */
 function openSettings(){
@@ -1291,10 +1364,83 @@ function openSettings(){
   el("f-size").value = setup.size;
   el("f-cond").value = setup.conditions;
   el("room-link-display").textContent = roomUrl();
+  refreshNotifyUI();
   go("settings");
 }
 el("btn-settings").onclick = openSettings;
 el("btn-back-board").onclick = () => { buzz(); go("board"); };
+
+/* ========================== 9c · NOTIFICHE PUSH ========================== */
+const VAPID_PUBLIC_KEY = "BNJY85_RJfi-KYQ9eJv0hKa0XKRYA-1EFRCMjh9rxz2wAyvOo4Dlfqm2XBus-TXmWaJMwD_FgA9fG0sxRSzQSTY";
+
+function urlBase64ToUint8Array(base64String){
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+function isIOS(){ return /iP(hone|od|ad)/.test(navigator.userAgent); }
+function isStandalone(){ return matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; }
+function pushSupported(){ return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
+
+let swRegistration = null;
+async function registerSW(){
+  if (!("serviceWorker" in navigator)) return null;
+  try { swRegistration = await navigator.serviceWorker.register("/sw.js"); return swRegistration; }
+  catch { return null; }
+}
+
+async function refreshNotifyUI(){
+  el("notify-off").hidden = true;
+  el("notify-on").hidden = true;
+  el("notify-ios-hint").hidden = true;
+  el("notify-unsupported").hidden = true;
+  el("notify-denied").hidden = true;
+
+  if (isIOS() && !isStandalone()){ el("notify-ios-hint").hidden = false; return; }
+  if (!pushSupported()){ el("notify-unsupported").hidden = false; return; }
+  if (Notification.permission === "denied"){ el("notify-denied").hidden = false; return; }
+  if (Notification.permission === "granted" && swRegistration){
+    try {
+      const sub = await swRegistration.pushManager.getSubscription();
+      if (sub){ el("notify-on").hidden = false; return; }
+    } catch {}
+  }
+  el("notify-off").hidden = false;
+}
+
+el("btn-notify-on").onclick = async () => {
+  buzz();
+  if (!pushSupported()) return;
+  if (!swRegistration) await registerSW();
+  if (!swRegistration) { toast(TP().loadError); return; }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted"){ refreshNotifyUI(); return; }
+    const sub = await swRegistration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    await apiPost({ action:"savePush", sub: sub.toJSON() });
+    toast(TP().toastNotifyOn);
+  } catch (e){ toast(TP().loadError); }
+  refreshNotifyUI();
+};
+
+el("btn-notify-off").onclick = async () => {
+  buzz();
+  try {
+    if (swRegistration){
+      const sub = await swRegistration.pushManager.getSubscription();
+      if (sub) await sub.unsubscribe();
+    }
+    await apiPost({ action:"removePush" });
+    toast(TP().toastNotifyOff);
+  } catch (e){}
+  refreshNotifyUI();
+};
 
 el("btn-save").onclick = async () => {
   buzz();
@@ -1380,9 +1526,11 @@ applyStaticI18n();
 buildComposer();
 ROOM_CODE = resolveRoomCode();
 applyRoomHeader();
+registerSW();
 loadRoom(false).then(() => routeByMembership());
 startPolling();
 </script>
 <script defer src="/_vercel/insights/script.js"></script>
+<script data-name="BMC-Widget" data-cfasync="false" src="https://cdn.buymeacoffee.com/widget/production/widget.prod.min.js" data-id="papalino" data-description="Ti va di offrirmi un caffè?" data-message="Se Il Cerchio ti è utile, un caffè fa sempre piacere ☕" data-color="#1C3A2E" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
 </body>
 </html>

@@ -1,16 +1,30 @@
 const { list, put, del } = require('@vercel/blob');
+const webpush = require('web-push');
 
 const CODE_RE = /^[a-z0-9]{4,24}$/i;
 const MAX_TASKS = 200;
 const MAX_MEMBERS = 60;
 const KEEP_VERSIONS = 2;
 
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || 'mailto:example@example.com',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+}
+
+const NOTIFY = {
+  it: { title: 'Il Cerchio', joinReq: name => `${name} chiede di entrare.`, newTask: name => `${name} ha aggiunto un compito.` },
+  en: { title: 'Il Cerchio', joinReq: name => `${name} is asking to join.`, newTask: name => `${name} added a task.` },
+};
+
 function prefix(code) {
   return `rooms/${code.toLowerCase()}/`;
 }
 
 function emptyRoom() {
-  return { _v: '', setup: { name: '', place: '', size: 0, lang: 'it' }, tasks: [], members: [], pending: [] };
+  return { _v: '', setup: { name: '', place: '', size: 0, lang: 'it' }, tasks: [], members: [], pending: [], pushSubs: {} };
 }
 
 /* Vercel Blob serve i contenuti tramite CDN: sovrascrivere lo stesso
@@ -39,6 +53,7 @@ async function readRoom(code) {
     data.tasks = Array.isArray(data.tasks) ? data.tasks : [];
     data.members = Array.isArray(data.members) ? data.members : [];
     data.pending = Array.isArray(data.pending) ? data.pending : [];
+    data.pushSubs = data.pushSubs && typeof data.pushSubs === 'object' ? data.pushSubs : {};
     data._v = latest.pathname.slice(prefix(code).length).replace(/\.json$/, '');
     return data;
   } catch {
@@ -73,9 +88,31 @@ function isMember(room, id) {
   return !!id && room.members.some(m => m.id === id);
 }
 
+// Manda una notifica push a tutti i membri tranne chi ha fatto l'azione.
+// Best-effort: un abbonamento scaduto (404/410) viene rimosso, il resto
+// degli errori viene ignorato senza far fallire la richiesta principale.
+async function notifyOthers(room, excludeId, body) {
+  if (!process.env.VAPID_PRIVATE_KEY) return;
+  const lang = (room.setup && room.setup.lang === 'en') ? 'en' : 'it';
+  const strings = NOTIFY[lang];
+  const payload = JSON.stringify({ title: strings.title, body });
+  const entries = Object.entries(room.pushSubs || {}).filter(([id]) => id !== excludeId);
+  let changed = false;
+  await Promise.allSettled(entries.map(([id, sub]) =>
+    webpush.sendNotification(sub, payload).catch(err => {
+      if (err && (err.statusCode === 404 || err.statusCode === 410)) {
+        delete room.pushSubs[id];
+        changed = true;
+      }
+    })
+  ));
+  return changed;
+}
+
 // Azioni che richiedono di essere già dentro il cerchio.
 const MEMBER_ONLY = new Set([
-  'saveSetup', 'addTask', 'claim', 'unclaim', 'done', 'reopen', 'remove', 'clearDone', 'approve', 'deny',
+  'saveSetup', 'addTask', 'claim', 'unclaim', 'done', 'reopen', 'remove', 'clearDone',
+  'approve', 'deny', 'savePush', 'removePush',
 ]);
 
 module.exports = async (req, res) => {
@@ -89,6 +126,7 @@ module.exports = async (req, res) => {
 
   if (req.method === 'GET') {
     const room = await readRoom(code);
+    delete room.pushSubs; // non serve al client, e sono dati di consegna, non di stanza
     res.status(200).json(room);
     return;
   }
@@ -116,6 +154,8 @@ module.exports = async (req, res) => {
     return;
   }
 
+  let notify = null;
+
   if (action === 'join') {
     const id = String(body.id || '').slice(0, 40);
     const name = String(body.name || '').slice(0, 60);
@@ -131,6 +171,7 @@ module.exports = async (req, res) => {
     } else {
       if (room.pending.length >= MAX_MEMBERS) room.pending.shift();
       room.pending.push({ id, name, requestedAt: Date.now() });
+      notify = strings => strings.joinReq(name);
     }
   } else if (action === 'cancelJoin') {
     // Chi è in attesa non è ancora membro: può ritirare solo la propria
@@ -150,6 +191,13 @@ module.exports = async (req, res) => {
     room.pending = room.pending.filter(p => p.id !== body.id);
   } else if (action === 'leave') {
     room.members = room.members.filter(m => m.id !== body.memberId);
+    delete room.pushSubs[body.memberId];
+  } else if (action === 'savePush') {
+    const sub = body.sub;
+    if (!sub || !sub.endpoint) { res.status(400).json({ error: 'missing_fields' }); return; }
+    room.pushSubs[body.memberId] = sub;
+  } else if (action === 'removePush') {
+    delete room.pushSubs[body.memberId];
   } else if (action === 'saveSetup') {
     const s = body.setup || {};
     room.setup = {
@@ -174,6 +222,8 @@ module.exports = async (req, res) => {
       claimedBy: '',
       createdAt: Date.now(),
     });
+    const actor = room.members.find(m => m.id === body.memberId);
+    notify = strings => strings.newTask(actor ? actor.name : '?');
   } else if (action === 'claim' || action === 'unclaim' || action === 'done' || action === 'reopen') {
     const idx = room.tasks.findIndex(x => x.id === body.id);
     if (idx !== -1) {
@@ -191,6 +241,13 @@ module.exports = async (req, res) => {
     return;
   }
 
+  if (notify) {
+    const lang = (room.setup && room.setup.lang === 'en') ? 'en' : 'it';
+    await notifyOthers(room, body.memberId, notify(NOTIFY[lang]));
+  }
+
   await writeRoom(code, room);
-  res.status(200).json(room);
+  const out = { ...room };
+  delete out.pushSubs;
+  res.status(200).json(out);
 };
