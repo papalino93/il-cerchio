@@ -647,7 +647,7 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
     countLabel: n => `${n} nel cerchio`,
     itemCount: n => `${n} ${n === 1 ? "cosa" : "cose"}`,
     turnLabel: name => `Tocca a ${name}`,
-    shareRoomMsg: link => `Guarda la bacheca de Il Cerchio: ${link}`,
+    shareRoomMsg: link => `Guarda la bacheca su Il Cerchio: ${link}`,
     loadError:"Controlla la connessione e riprova.",
     hintNeedTask:"Scegli cosa serve prima di aggiungere.",
     toastVoceAccorciata:"Voce accorciata: tienile brevi.",
@@ -1020,14 +1020,32 @@ el("btn-clear-done").onclick = () => {
   withRoom(apiPost({ action:"clearDone" })).then(() => renderBoard()).catch(() => toast(TP().loadError));
 };
 
+/* window.open() da solo viene bloccato da diversi browser/estensioni
+   quando arriva da un handler asincrono. Un vero <a> cliccato è quello
+   che i blocchi popup lasciano passare più spesso: lo usiamo come
+   percorso principale su desktop, con la copia negli appunti come
+   ultima rete di sicurezza se anche quello fallisce. */
 async function share(text){
   if (navigator.share){
     try { await navigator.share({ text }); return "shared"; }
     catch (err){ if (err && (err.name === "AbortError" || err.name === "NotAllowedError")) return "cancelled"; }
   }
-  const w = window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener");
-  if (!w) copy(text, TP().toastMessaggioCopiato);
-  return "opened";
+  const url = "https://wa.me/?text=" + encodeURIComponent(text);
+  let opened = false;
+  try {
+    const a = document.createElement("a");
+    a.href = url; a.target = "_blank"; a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    opened = true;
+  } catch {}
+  if (!opened){
+    const w = window.open(url, "_blank", "noopener");
+    opened = !!w;
+  }
+  if (!opened) copy(text, TP().toastMessaggioCopiato);
+  return opened ? "opened" : "copied";
 }
 async function copy(text, msg){
   try { await navigator.clipboard.writeText(text); toast(msg || TP().toastCopiato); }
