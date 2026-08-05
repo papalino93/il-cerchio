@@ -111,9 +111,11 @@ async function notifyOthers(room, excludeId, body) {
 
 // Azioni che richiedono di essere già dentro il cerchio.
 const MEMBER_ONLY = new Set([
-  'saveSetup', 'addTask', 'claim', 'unclaim', 'done', 'reopen', 'remove', 'clearDone',
-  'approve', 'deny', 'savePush', 'removePush',
+  'saveSetup', 'addTask', 'editTask', 'claim', 'unclaim', 'done', 'reopen', 'remove', 'clearDone',
+  'approve', 'deny', 'savePush', 'removePush', 'removeMember',
 ]);
+
+const RECURRING = new Set(['ognigiorno', 'ricorrente']);
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -192,6 +194,14 @@ module.exports = async (req, res) => {
   } else if (action === 'leave') {
     room.members = room.members.filter(m => m.id !== body.memberId);
     delete room.pushSubs[body.memberId];
+  } else if (action === 'removeMember') {
+    // Chiunque sia dentro può togliere chiunque altro (stessa logica
+    // simmetrica dell'approvazione), ma non se stesso: per quello c'è "leave".
+    const id = String(body.id || '');
+    if (id && id !== body.memberId) {
+      room.members = room.members.filter(m => m.id !== id);
+      delete room.pushSubs[id];
+    }
   } else if (action === 'savePush') {
     const sub = body.sub;
     if (!sub || !sub.endpoint) { res.status(400).json({ error: 'missing_fields' }); return; }
@@ -224,12 +234,40 @@ module.exports = async (req, res) => {
     });
     const actor = room.members.find(m => m.id === body.memberId);
     notify = strings => strings.newTask(actor ? actor.name : '?');
+  } else if (action === 'editTask') {
+    const idx = room.tasks.findIndex(x => x.id === body.id);
+    if (idx !== -1) {
+      const t = body.task || {};
+      const cur = room.tasks[idx];
+      room.tasks[idx] = {
+        ...cur,
+        taskType: String(t.taskType || cur.taskType).slice(0, 30),
+        when: String(t.when || '').slice(0, 20),
+        day: String(t.day || '').slice(0, 20),
+        detail: String(t.detail || '').slice(0, 200),
+        note: String(t.note || '').slice(0, 300),
+        list: Array.isArray(t.list) ? t.list.slice(0, 30).map(x => String(x).slice(0, 80)) : [],
+      };
+    }
   } else if (action === 'claim' || action === 'unclaim' || action === 'done' || action === 'reopen') {
     const idx = room.tasks.findIndex(x => x.id === body.id);
     if (idx !== -1) {
       if (action === 'claim') { room.tasks[idx].status = 'claimed'; room.tasks[idx].claimedBy = String(body.by || '').slice(0, 40); }
       if (action === 'unclaim') { room.tasks[idx].status = 'open'; room.tasks[idx].claimedBy = ''; }
-      if (action === 'done') { room.tasks[idx].status = 'done'; room.tasks[idx].doneAt = Date.now(); }
+      if (action === 'done') {
+        room.tasks[idx].status = 'done';
+        room.tasks[idx].doneAt = Date.now();
+        // "Ogni giorno"/"Ogni settimana" non sono solo un'etichetta: quando
+        // lo spunti, il compito torna da capo per la prossima volta.
+        const src = room.tasks[idx];
+        if (RECURRING.has(src.when) && room.tasks.length < MAX_TASKS) {
+          room.tasks.push({
+            id: rid(), taskType: src.taskType, when: src.when, day: '',
+            detail: src.detail, note: src.note, list: src.list, lang: src.lang,
+            status: 'open', claimedBy: '', createdAt: Date.now(),
+          });
+        }
+      }
       if (action === 'reopen') { room.tasks[idx].status = 'open'; room.tasks[idx].claimedBy = ''; }
     }
   } else if (action === 'remove') {
