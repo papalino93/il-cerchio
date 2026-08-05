@@ -224,6 +224,7 @@ function applyStaticI18n(){
   el("lang-pair").querySelectorAll("button").forEach(b =>
     b.setAttribute("aria-pressed", String(b.dataset.lang === LANG)));
   el("btn-coffee").href = COFFEE_URL || "#";
+  el("coffeeFab").href = COFFEE_URL || "#";
 }
 function rerenderCurrentView(){
   if (current === "board") renderBoard();
@@ -246,6 +247,9 @@ el("lang-pair").addEventListener("click", e => {
   buzz(); applyLang(b.dataset.lang);
 });
 el("btn-coffee").addEventListener("click", e => {
+  if (!COFFEE_URL){ e.preventDefault(); toast(TP().toastCoffeeMissing); }
+});
+el("coffeeFab").addEventListener("click", e => {
   if (!COFFEE_URL){ e.preventDefault(); toast(TP().toastCoffeeMissing); }
 });
 
