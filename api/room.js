@@ -2,6 +2,7 @@ const { list, put, del } = require('@vercel/blob');
 
 const CODE_RE = /^[a-z0-9]{4,24}$/i;
 const MAX_TASKS = 200;
+const MAX_MEMBERS = 60;
 const KEEP_VERSIONS = 2;
 
 function prefix(code) {
@@ -9,7 +10,7 @@ function prefix(code) {
 }
 
 function emptyRoom() {
-  return { _v: '', setup: { name: '', place: '', size: 0, lang: 'it' }, tasks: [] };
+  return { _v: '', setup: { name: '', place: '', size: 0, lang: 'it' }, tasks: [], members: [], pending: [] };
 }
 
 /* Vercel Blob serve i contenuti tramite CDN: sovrascrivere lo stesso
@@ -36,6 +37,8 @@ async function readRoom(code) {
     if (!data || typeof data !== 'object') return emptyRoom();
     data.setup = data.setup || emptyRoom().setup;
     data.tasks = Array.isArray(data.tasks) ? data.tasks : [];
+    data.members = Array.isArray(data.members) ? data.members : [];
+    data.pending = Array.isArray(data.pending) ? data.pending : [];
     data._v = latest.pathname.slice(prefix(code).length).replace(/\.json$/, '');
     return data;
   } catch {
@@ -66,6 +69,15 @@ function rid() {
   return 't_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 }
 
+function isMember(room, id) {
+  return !!id && room.members.some(m => m.id === id);
+}
+
+// Azioni che richiedono di essere già dentro il cerchio.
+const MEMBER_ONLY = new Set([
+  'saveSetup', 'addTask', 'claim', 'unclaim', 'done', 'reopen', 'remove', 'clearDone', 'approve', 'deny',
+]);
+
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
 
@@ -95,7 +107,50 @@ module.exports = async (req, res) => {
 
   const room = await readRoom(code);
 
-  if (action === 'saveSetup') {
+  // Il cerchio è chiuso: per fare qualsiasi cosa oltre a chiedere di
+  // entrare, bisogna già essere tra i membri. Verifica server-side, non
+  // solo nell'interfaccia: un memberId non valido o non ancora
+  // approvato viene respinto qui.
+  if (MEMBER_ONLY.has(action) && !isMember(room, body.memberId)) {
+    res.status(403).json({ error: 'not_a_member' });
+    return;
+  }
+
+  if (action === 'join') {
+    const id = String(body.id || '').slice(0, 40);
+    const name = String(body.name || '').slice(0, 60);
+    if (!id || !name) { res.status(400).json({ error: 'missing_fields' }); return; }
+    if (room.members.some(m => m.id === id)) {
+      // già dentro: aggiorna solo il nome, se cambiato
+      room.members = room.members.map(m => m.id === id ? { ...m, name } : m);
+    } else if (room.pending.some(p => p.id === id)) {
+      room.pending = room.pending.map(p => p.id === id ? { ...p, name } : p);
+    } else if (room.members.length === 0) {
+      // primo arrivo: il cerchio è vuoto, chi lo crea entra subito
+      room.members.push({ id, name, joinedAt: Date.now() });
+    } else {
+      if (room.pending.length >= MAX_MEMBERS) room.pending.shift();
+      room.pending.push({ id, name, requestedAt: Date.now() });
+    }
+  } else if (action === 'cancelJoin') {
+    // Chi è in attesa non è ancora membro: può ritirare solo la propria
+    // richiesta (non serve essere dentro per farlo).
+    const id = String(body.id || '');
+    if (id) room.pending = room.pending.filter(p => p.id !== id);
+  } else if (action === 'approve') {
+    const idx = room.pending.findIndex(p => p.id === body.id);
+    if (idx !== -1) {
+      const [p] = room.pending.splice(idx, 1);
+      if (!room.members.some(m => m.id === p.id)) {
+        if (room.members.length >= MAX_MEMBERS) { res.status(400).json({ error: 'circle_full' }); return; }
+        room.members.push({ id: p.id, name: p.name, joinedAt: Date.now() });
+      }
+    }
+  } else if (action === 'deny') {
+    room.pending = room.pending.filter(p => p.id !== body.id);
+  } else if (action === 'leave') {
+    room.members = room.members.filter(m => m.id !== body.memberId);
+  } else if (action === 'saveSetup') {
     const s = body.setup || {};
     room.setup = {
       name: String(s.name || '').slice(0, 60),

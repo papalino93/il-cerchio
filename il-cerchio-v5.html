@@ -400,6 +400,31 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
       <p id="warn-text"></p>
     </div>
 
+    <!-- ============ CHIEDI DI ENTRARE ============ -->
+    <div class="view" id="v-join" hidden>
+      <div class="block">
+        <div>
+          <p class="eyebrow" data-i18n="joinEyebrow">Cerchio chiuso</p>
+          <h2 class="step" id="k-join" tabindex="-1" data-i18n="joinTitle">Come ti chiami?</h2>
+          <p class="hint" data-i18n="joinHint">Qualcuno che è già dentro dovrà autorizzarti.</p>
+        </div>
+        <input class="input" id="f-joinname" autocomplete="off" maxlength="60" data-i18n-ph="joinNamePh">
+        <button class="btn primary" id="btn-join" type="button" data-i18n="joinBtn">Chiedi di entrare</button>
+      </div>
+    </div>
+
+    <!-- ============ IN ATTESA ============ -->
+    <div class="view" id="v-waiting" hidden>
+      <div class="block">
+        <div>
+          <p class="eyebrow" data-i18n="waitingEyebrow">In attesa</p>
+          <h2 class="step" id="k-waiting" tabindex="-1" data-i18n="waitingTitle">Qualcuno deve farti entrare</h2>
+          <p class="hint" data-i18n="waitingHint">Non appena una persona del cerchio ti autorizza, questa pagina si aggiorna da sola.</p>
+        </div>
+        <button class="btn quiet" id="btn-cancel-join" type="button" data-i18n="cancelJoinBtn">Annulla richiesta</button>
+      </div>
+    </div>
+
     <!-- ============ BACHECA ============ -->
     <div class="view" id="v-board" hidden>
 
@@ -495,9 +520,20 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
       <p class="hint" style="margin-top:6px" data-i18n="settingsHint">Restano su questo telefono.</p>
 
       <div class="block" style="margin-top:24px">
+        <p class="eyebrow" data-i18n="circleEyebrow">Il cerchio</p>
+
+        <div id="pending-box" hidden>
+          <p class="lbl" data-i18n="pendingLabel">Chiedono di entrare</p>
+          <div class="tasklist" id="pending-list" style="margin-top:9px"></div>
+        </div>
+
+        <div>
+          <p class="lbl" data-i18n="membersLabel">Chi c'è nel cerchio</p>
+          <div class="tasklist" id="members-list" style="margin-top:9px"></div>
+        </div>
 
         <div class="room-box">
-          <p class="lbl" data-i18n="roomLabel">Il link della tua famiglia</p>
+          <p class="lbl" data-i18n="inviteLabel">Invita qualcuno</p>
           <div class="room-box-row">
             <span class="room-code" id="room-link-display"></span>
           </div>
@@ -508,12 +544,19 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
           <p class="micro" data-i18n="roomHint"></p>
         </div>
 
+        <p class="settings-link"><button id="btn-leave-circle" type="button" data-i18n="leaveBtn">Esci dal cerchio</button></p>
+      </div>
+
+      <div class="block">
+        <p class="eyebrow" data-i18n="myNameEyebrow">Il tuo nome</p>
         <div>
-          <label class="lbl" for="f-myname" data-i18n="myNameLabel">Il tuo nome</label>
-          <p class="micro" style="margin:5px 0 7px" data-i18n="myNameHint"></p>
+          <p class="micro" data-i18n="myNameHint"></p>
           <input class="input" id="f-myname" style="margin-top:7px" autocomplete="off">
         </div>
+      </div>
 
+      <div class="block">
+        <p class="eyebrow" data-i18n="sharedInfoEyebrow">Informazioni condivise</p>
         <div>
           <label class="lbl" for="f-name" data-i18n="nameLabel">Come si chiama</label>
           <input class="input" id="f-name" style="margin-top:7px" autocomplete="off">
@@ -526,28 +569,33 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
           <label class="lbl" for="f-size" data-i18n="sizeLabel">Quante persone nel cerchio</label>
           <input class="input" id="f-size" type="number" min="0" max="30" inputmode="numeric" style="margin-top:7px;max-width:140px">
         </div>
+      </div>
+
+      <div class="block">
+        <p class="eyebrow" data-i18n="privateNotesEyebrow">Note per te</p>
         <div>
           <label class="lbl" for="f-cond" data-i18n="condLabel">Cosa preferisce fare da sé</label>
           <p class="micro" style="margin:5px 0 7px" data-i18n="condHint"></p>
           <textarea class="input" id="f-cond" rows="3" data-i18n-ph="condPlaceholder"></textarea>
         </div>
-        <button class="btn primary" id="btn-save" style="margin-top:6px" data-i18n="saveBtn">Salva</button>
-
-        <div style="margin-top:8px">
-          <label class="lbl" data-i18n="langLabel">Lingua</label>
-          <div class="lang-pair" id="lang-pair" role="group" style="margin-top:7px">
-            <button type="button" data-lang="it" aria-pressed="false">Italiano</button>
-            <button type="button" data-lang="en" aria-pressed="false">English</button>
-          </div>
-        </div>
-
-        <a class="btn ghost coffee-btn" id="btn-coffee" href="#" target="_blank" rel="noopener noreferrer">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 9h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M8 3c-.5 1 .5 1.5 0 3M12 3c-.5 1 .5 1.5 0 3"/></svg>
-          <span data-i18n="coffeeBtn">Offrimi un caffè</span>
-        </a>
-
-        <p class="settings-link"><button id="btn-back-board" type="button" data-i18n="backBtn">Torna alla bacheca</button></p>
       </div>
+
+      <button class="btn primary" id="btn-save" style="margin-top:30px" data-i18n="saveBtn">Salva</button>
+
+      <div class="block">
+        <p class="eyebrow" data-i18n="langEyebrow">Lingua</p>
+        <div class="lang-pair" id="lang-pair" role="group" style="margin-top:9px">
+          <button type="button" data-lang="it" aria-pressed="false">Italiano</button>
+          <button type="button" data-lang="en" aria-pressed="false">English</button>
+        </div>
+      </div>
+
+      <a class="btn ghost coffee-btn" id="btn-coffee" href="#" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 9h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M8 3c-.5 1 .5 1.5 0 3M12 3c-.5 1 .5 1.5 0 3"/></svg>
+        <span data-i18n="coffeeBtn">Offrimi un caffè</span>
+      </a>
+
+      <p class="settings-link"><button id="btn-back-board" type="button" data-i18n="backBtn">Torna alla bacheca</button></p>
     </div>
 
   </main>
@@ -601,13 +649,27 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
     boardEmpty:"Nessun compito al momento. Aggiungine uno.",
     clearDoneBtn:"Svuota i fatti",
     roomLabel:"Il link della tua famiglia",
-    roomHint:"Chiunque apre questo link vede e aggiorna la stessa bacheca. Salvalo o condividilo.",
+    roomHint:"Chi apre questo link deve chiedere di entrare: entra solo se qualcuno del cerchio lo autorizza.",
     shareRoomBtn:"Condividi su WhatsApp",
-    myNameLabel:"Il tuo nome",
+    myNameLabel:"Il tuo nome", youTag:"tu",
     myNameHint:"Compare quando ti prendi un compito. Resta su questo telefono.",
     backBtn:"Torna alla bacheca",
     doneBtn:"Fatto", unclaimBtn:"Lascia", reopenBtn:"Riapri",
-    yesBtn:"Ci penso io"
+    yesBtn:"Ci penso io",
+    joinEyebrow:"Cerchio chiuso", joinTitle:"Come ti chiami?",
+    joinHint:"Qualcuno che è già dentro dovrà autorizzarti.",
+    joinNamePh:"Il tuo nome", joinBtn:"Chiedi di entrare",
+    waitingEyebrow:"In attesa", waitingTitle:"Qualcuno deve farti entrare",
+    waitingHint:"Non appena una persona del cerchio ti autorizza, questa pagina si aggiorna da sola.",
+    cancelJoinBtn:"Annulla richiesta",
+    circleEyebrow:"Il cerchio", pendingLabel:"Chiedono di entrare",
+    membersLabel:"Chi c'è nel cerchio", inviteLabel:"Invita qualcuno",
+    leaveBtn:"Esci dal cerchio",
+    myNameEyebrow:"Il tuo nome", sharedInfoEyebrow:"Informazioni condivise",
+    privateNotesEyebrow:"Note per te", langEyebrow:"Lingua",
+    approveBtn:"Accetta", denyBtn:"Rifiuta",
+    toastRichiestaInviata:"Richiesta inviata.", toastBenvenuto:"Sei nel cerchio.",
+    toastUscito:"Sei uscito dal cerchio."
   },
   tasks:[
     { id:"spesa",       icon:"spesa",       t:"Fare la spesa",               h:"buste pesanti" },
@@ -685,13 +747,27 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
     boardEmpty:"No tasks right now. Add one.",
     clearDoneBtn:"Clear done",
     roomLabel:"Your family's link",
-    roomHint:"Anyone who opens this link sees and updates the same board. Save it or share it.",
+    roomHint:"Whoever opens this link has to ask to join: they're only in once someone from the circle lets them in.",
     shareRoomBtn:"Share on WhatsApp",
-    myNameLabel:"Your name",
+    myNameLabel:"Your name", youTag:"you",
     myNameHint:"Shown when you take a task. Stays on this phone.",
     backBtn:"Back to the board",
     doneBtn:"Done", unclaimBtn:"Leave it", reopenBtn:"Reopen",
-    yesBtn:"I've got it"
+    yesBtn:"I've got it",
+    joinEyebrow:"Closed circle", joinTitle:"What's your name?",
+    joinHint:"Someone already inside will need to let you in.",
+    joinNamePh:"Your name", joinBtn:"Ask to join",
+    waitingEyebrow:"Waiting", waitingTitle:"Someone needs to let you in",
+    waitingHint:"As soon as someone from the circle approves you, this page updates on its own.",
+    cancelJoinBtn:"Cancel request",
+    circleEyebrow:"The circle", pendingLabel:"Asking to join",
+    membersLabel:"Who's in the circle", inviteLabel:"Invite someone",
+    leaveBtn:"Leave the circle",
+    myNameEyebrow:"Your name", sharedInfoEyebrow:"Shared information",
+    privateNotesEyebrow:"Notes for you", langEyebrow:"Language",
+    approveBtn:"Accept", denyBtn:"Decline",
+    toastRichiestaInviata:"Request sent.", toastBenvenuto:"You're in the circle.",
+    toastUscito:"You left the circle."
   },
   tasks:[
     { id:"spesa",       icon:"spesa",       t:"Get the groceries",           h:"heavy bags" },
@@ -750,7 +826,7 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
 
 /* ========================== 3 · STATO ========================== */
 const el = id => document.getElementById(id);
-const KEY_SETUP = "cerchio:setup", KEY_ROOM = "cerchio:room", KEY_MYNAME = "cerchio:myname";
+const KEY_SETUP = "cerchio:setup", KEY_ROOM = "cerchio:room", KEY_MYNAME = "cerchio:myname", KEY_MEMBER = "cerchio:memberid";
 const store = {
   get(k, f){ try { return JSON.parse(localStorage.getItem(k)) ?? f; } catch { return f; } },
   set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
@@ -770,8 +846,13 @@ let TASKS = I18N[LANG].tasks, WHENS = I18N[LANG].whens, DETAILS = I18N[LANG].det
 
 let setup = Object.assign({ name:"", place:"", size:0, conditions:"" }, store.get(KEY_SETUP, {}));
 let myName = store.get(KEY_MYNAME, "");
+let myMemberId = store.get(KEY_MEMBER, null);
+if (!myMemberId){
+  myMemberId = "m_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  store.set(KEY_MEMBER, myMemberId);
+}
 let draft = { task:null, lists:{}, texts:{}, when:null, day:"", words:"" };
-let room = { _v:"", setup:{ name:"", place:"", size:0, lang:LANG }, tasks:[] };
+let room = { _v:"", setup:{ name:"", place:"", size:0, lang:LANG }, tasks:[], members:[], pending:[] };
 let ROOM_CODE = "";
 let current = null;
 let pollTimer = null;
@@ -828,17 +909,36 @@ async function apiGet(){
 }
 async function apiPost(body){
   const res = await fetch(`/api/room?code=${encodeURIComponent(ROOM_CODE)}`, {
-    method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body)
+    method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ memberId: myMemberId, ...body })
   });
-  if (!res.ok) throw new Error("post_failed");
+  if (!res.ok) { const err = new Error("post_failed"); err.status = res.status; throw err; }
   return res.json();
 }
+
+/* ========================== 4b · APPARTENENZA ========================== */
+/* Il cerchio è chiuso: possedere il link basta per chiedere di entrare,
+   non per vedere o modificare la bacheca. Lo stato si ricava sempre dai
+   dati del server (members/pending), mai da un flag locale. */
+function myStatus(){
+  if (room.members.some(m => m.id === myMemberId)) return "member";
+  if (room.pending.some(p => p.id === myMemberId)) return "pending";
+  return "none";
+}
+function routeByMembership(announce){
+  const st = myStatus();
+  if (st === "member") go("board", announce);
+  else if (st === "pending") go("waiting");
+  else go("join");
+}
+
 async function loadRoom(silent){
   try {
     await withRoom(apiGet());
     el("warn").hidden = true;
     applyRoomHeader();
     if (current === "board") renderBoard();
+    if (current === "waiting" && myStatus() === "member") { go("board", TP().toastBenvenuto); toast(TP().toastBenvenuto); }
+    if (current === "settings") { renderMembers(); renderPending(); }
     return true;
   } catch (e){
     if (!silent){
@@ -857,6 +957,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
 
 /* ========================== 5 · NAVIGAZIONE ========================== */
 const VIEWS = {
+  join:{ v:"v-join", f:"f-joinname" },
+  waiting:{ v:"v-waiting", f:"k-waiting" },
   board:{ v:"v-board", f:"btn-add-task" },
   compose:{ v:"v-compose", f:"s1" },
   settings:{ v:"v-settings", f:"k-set" }
@@ -875,7 +977,11 @@ function go(key, announce){
     if (announce) el("live").textContent = announce;
     current = key;
     if (key === "board") renderBoard();
-    if (key === "settings"){ el("room-link-display").textContent = roomUrl(); }
+    if (key === "join") el("f-joinname").value = myName;
+    if (key === "settings"){
+      el("room-link-display").textContent = roomUrl();
+      renderMembers(); renderPending();
+    }
   };
   if (current && !reduced()){
     const old = el(VIEWS[current].v);
@@ -1209,13 +1315,72 @@ el("btn-save").onclick = async () => {
   toast(TP().toastSalvatoOk);
 };
 
+/* ========================== 9b · MEMBRI ========================== */
+function renderMembers(){
+  const list = room.members || [];
+  el("members-list").innerHTML = list.map(m =>
+    `<div class="task-row"><div class="task-row-body"><b>${esc(m.name)}${m.id === myMemberId ? ` <span class="task-row-who">(${esc(S().youTag)})</span>` : ""}</b></div></div>`
+  ).join("") || `<p class="board-empty">—</p>`;
+}
+function renderPending(){
+  const list = room.pending || [];
+  el("pending-box").hidden = list.length === 0;
+  el("pending-list").innerHTML = list.map(p =>
+    `<div class="task-row">
+       <div class="task-row-body"><b>${esc(p.name)}</b></div>
+       <div class="task-row-actions">
+         <button class="chip-btn primary" data-act="approve" data-id="${p.id}">${esc(S().approveBtn)}</button>
+         <button class="chip-btn" data-act="deny" data-id="${p.id}">${esc(S().denyBtn)}</button>
+       </div>
+     </div>`
+  ).join("");
+}
+el("pending-list").addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  buzz();
+  withRoom(apiPost({ action:b.dataset.act, id:b.dataset.id }))
+    .then(() => { renderMembers(); renderPending(); })
+    .catch(() => toast(TP().loadError));
+});
+
+el("btn-leave-circle").onclick = async () => {
+  buzz();
+  try { await withRoom(apiPost({ action:"leave" })); } catch (e){}
+  stopPolling();
+  store.del(KEY_ROOM); store.del(KEY_MEMBER);
+  try {
+    const u = new URL(location.href);
+    u.searchParams.delete("r");
+    history.replaceState(null, "", u.toString());
+  } catch {}
+  location.reload();
+};
+
+/* ========================== 9c · INGRESSO NEL CERCHIO ========================== */
+el("btn-join").onclick = async () => {
+  const name = el("f-joinname").value.trim();
+  if (!name){ buzz(); el("f-joinname").focus(); return; }
+  buzz();
+  myName = name; store.set(KEY_MYNAME, name);
+  try {
+    await withRoom(apiPost({ action:"join", id:myMemberId, name }));
+    toast(myStatus() === "member" ? TP().toastBenvenuto : TP().toastRichiestaInviata);
+    routeByMembership();
+    if (myStatus() === "member") applyRoomHeader();
+  } catch (e){ toast(TP().loadError); }
+};
+el("btn-cancel-join").onclick = async () => {
+  buzz();
+  try { await withRoom(apiPost({ action:"cancelJoin", id:myMemberId })); } catch (e){}
+  go("join");
+};
+
 /* ========================== 10 · AVVIO ========================== */
 applyStaticI18n();
 buildComposer();
 ROOM_CODE = resolveRoomCode();
 applyRoomHeader();
-go("board");
-loadRoom(false);
+loadRoom(false).then(() => routeByMembership());
 startPolling();
 </script>
 <script defer src="/_vercel/insights/script.js"></script>
