@@ -439,8 +439,8 @@ async function copy(text, msg){
     a.remove();
   }
 }
-el("btn-share-board").onclick = () => { buzz(); share(TP().shareRoomMsg(roomUrl())); };
-el("btn-share-room").onclick  = () => { buzz(); share(TP().shareRoomMsg(roomUrl())); };
+el("btn-share-board").onclick = () => { buzz(); share(TP().shareRoomMsg(roomUrl(), ROOM_CODE)); };
+el("btn-share-room").onclick  = () => { buzz(); share(TP().shareRoomMsg(roomUrl(), ROOM_CODE)); };
 el("btn-copy-room").onclick   = () => { buzz(); copy(roomUrl(), TP().toastLinkCopiato); };
 el("btn-copy-personal").onclick  = () => { buzz(); copy(personalUrl(), TP().toastLinkCopiato); };
 el("btn-share-personal").onclick = () => { buzz(); share(personalUrl()); };
