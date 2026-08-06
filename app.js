@@ -146,6 +146,7 @@ async function loadRoom(silent){
     if (current === "board") renderBoard();
     if (current === "waiting" && myStatus() === "member") { go("board", TP().toastBenvenuto); toast(TP().toastBenvenuto); }
     if (current === "settings") { renderMembers(); renderPending(); }
+    if (current === "join") paintJoinView();
     return true;
   } catch (e){
     if (!silent){
@@ -161,6 +162,18 @@ function startPolling(){
 }
 function stopPolling(){ if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
 document.addEventListener("visibilitychange", () => { if (!document.hidden) loadRoom(true); });
+
+/* Il primissimo arrivo in uno spazio vuoto non sta chiedendo di entrare
+   in qualcosa che già esiste: lo sta creando. Il testo della schermata
+   di ingresso cambia di conseguenza (vedi createHandler → azione "join"
+   in api/_engine.js, dove il primo membro entra senza autorizzazione). */
+function paintJoinView(){
+  const creating = (room.members || []).length === 0;
+  const s = S();
+  el("join-eyebrow").textContent = creating ? s.joinEyebrowCreate : s.joinEyebrow;
+  el("join-hint").textContent = creating ? s.joinHintCreate : s.joinHint;
+  el("btn-join").textContent = creating ? s.joinBtnCreate : s.joinBtn;
+}
 
 /* ========================== 5 · NAVIGAZIONE ========================== */
 const VIEWS = {
@@ -184,7 +197,7 @@ function go(key, announce){
     if (announce) el("live").textContent = announce;
     current = key;
     if (key === "board") renderBoard();
-    if (key === "join") el("f-joinname").value = myName;
+    if (key === "join") { el("f-joinname").value = myName; paintJoinView(); }
     if (key === "settings"){
       el("room-link-display").textContent = roomUrl();
       el("personal-link-display").textContent = personalUrl();
@@ -230,6 +243,7 @@ function rerenderCurrentView(){
   if (current === "board") renderBoard();
   else if (current === "compose"){ renderComposerLists(); paintDetail(); }
   else if (current === "settings"){ el("room-link-display").textContent = roomUrl(); el("personal-link-display").textContent = personalUrl(); }
+  else if (current === "join") paintJoinView();
 }
 function setLang(l, persist){
   LANG = l;
