@@ -75,6 +75,41 @@ function resolveRoomCode(){
   return code;
 }
 
+/* Vero solo se sappiamo già a quale spazio appartieni: un link con
+   "?r=" nell'indirizzo, oppure un codice già salvato da una visita
+   precedente. Se manca entrambe le cose, non possiamo indovinare se
+   vuoi crearne uno nuovo o entrare in uno che già esiste: lo chiediamo
+   esplicitamente (vedi schermata "landing") invece di generarne uno
+   a caso, cosa che romperebbe silenziosamente un invito arrivato in
+   un altro modo (es. codice passato a voce). */
+function hasRoomContext(){
+  const q = new URLSearchParams(location.search).get("r");
+  if (q && /^[a-z0-9]{4,24}$/i.test(q)) return true;
+  return !!store.get(KEY_ROOM, null);
+}
+
+// Riconosce sia un link completo (?r=codice, anche dentro testo incollato
+// con altra roba intorno) sia il codice nudo, incollati a mano.
+function extractRoomCode(raw){
+  const text = String(raw || "").trim();
+  if (!text) return null;
+  try {
+    const u = new URL(text);
+    const q = u.searchParams.get("r");
+    if (q && /^[a-z0-9]{4,24}$/i.test(q)) return q.toLowerCase();
+  } catch {}
+  if (/^[a-z0-9]{4,24}$/i.test(text)) return text.toLowerCase();
+  const m = text.match(/[?&]r=([a-z0-9]{4,24})/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
+function enterRoom(){
+  ROOM_CODE = resolveRoomCode();
+  applyRoomHeader();
+  loadRoom(false).then(() => routeByMembership());
+  startPolling();
+}
+
 /* Un link "personale" (?r=codice&m=iltuoid) permette di recuperare il
    proprio posto qui dentro da un telefono nuovo o dopo aver svuotato il
    browser, senza dover richiedere di nuovo l'autorizzazione: il server
@@ -177,6 +212,7 @@ function paintJoinView(){
 
 /* ========================== 5 · NAVIGAZIONE ========================== */
 const VIEWS = {
+  landing:{ v:"v-landing", f:"btn-landing-create" },
   join:{ v:"v-join", f:"f-joinname" },
   waiting:{ v:"v-waiting", f:"k-waiting" },
   board:{ v:"v-board", f:"btn-add-task" },
@@ -738,6 +774,14 @@ el("btn-leave-circle").onclick = async () => {
 };
 
 /* ========================== 9d · INGRESSO ========================== */
+el("btn-landing-create").onclick = () => { buzz(); enterRoom(); };
+el("btn-landing-invite").onclick = () => {
+  const code = extractRoomCode(el("f-landing-invite").value);
+  if (!code){ buzz(); toast(S().toastInviteInvalid); return; }
+  buzz();
+  store.set(KEY_ROOM, code);
+  enterRoom();
+};
 el("btn-join").onclick = async () => {
   const name = el("f-joinname").value.trim();
   if (!name){ buzz(); el("f-joinname").focus(); return; }
@@ -759,9 +803,7 @@ el("btn-cancel-join").onclick = async () => {
 /* ========================== 10 · AVVIO ========================== */
 applyStaticI18n();
 buildComposer();
-ROOM_CODE = resolveRoomCode();
 myMemberId = resolveMemberId();
-applyRoomHeader();
 registerSW();
-loadRoom(false).then(() => routeByMembership());
-startPolling();
+if (hasRoomContext()) enterRoom();
+else go("landing");

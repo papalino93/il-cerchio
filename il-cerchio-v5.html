@@ -435,6 +435,23 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
       <p id="warn-text"></p>
     </div>
 
+    <!-- ============ PRIMA SCHERMATA: crea o entra con invito ============ -->
+    <div class="view" id="v-landing" hidden>
+      <div class="block">
+        <div>
+          <p class="eyebrow" data-i18n="landingEyebrow">Prima di cominciare</p>
+          <h2 class="step" id="k-landing" tabindex="-1" data-i18n="landingTitle">Sei il primo, o hai un invito?</h2>
+          <p class="hint" data-i18n="landingHint">Se qualcuno che è già dentro ti ha mandato un link o un codice, usalo qui sotto. Altrimenti crea tu il cerchio.</p>
+        </div>
+        <button class="btn primary" id="btn-landing-create" type="button" data-i18n="landingCreateBtn">Crea un nuovo cerchio</button>
+        <div class="room-box">
+          <p class="lbl" data-i18n="landingInviteLabel">Hai un invito da qualcuno già dentro?</p>
+          <input class="input" id="f-landing-invite" autocomplete="off" data-i18n-ph="landingInvitePh">
+          <button class="btn quiet" id="btn-landing-invite" type="button" data-i18n="landingInviteBtn">Entra con l'invito</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ============ CHIEDI DI ENTRARE ============ -->
     <div class="view" id="v-join" hidden>
       <div class="block">
@@ -736,6 +753,14 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
     backBtn:"Torna alla bacheca",
     doneBtn:"Fatto", unclaimBtn:"Lascia", reopenBtn:"Riapri",
     yesBtn:"Ci penso io",
+    landingEyebrow:"Prima di cominciare",
+    landingTitle:"Sei il primo, o hai un invito?",
+    landingHint:"Se qualcuno che è già dentro ti ha mandato un link o un codice, usalo qui sotto. Altrimenti crea tu il cerchio.",
+    landingCreateBtn:"Crea un nuovo cerchio",
+    landingInviteLabel:"Hai un invito da qualcuno già dentro?",
+    landingInvitePh:"Incolla qui il link o il codice",
+    landingInviteBtn:"Entra con l'invito",
+    toastInviteInvalid:"Non riconosco questo link o codice. Controlla e riprova.",
     joinEyebrow:"Cerchio chiuso", joinTitle:"Come ti chiami?",
     joinHint:"Qualcuno che è già dentro dovrà autorizzarti.",
     joinEyebrowCreate:"Nuovo cerchio",
@@ -856,6 +881,14 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
     backBtn:"Back to the board",
     doneBtn:"Done", unclaimBtn:"Leave it", reopenBtn:"Reopen",
     yesBtn:"I've got it",
+    landingEyebrow:"Before you start",
+    landingTitle:"Are you the first one, or do you have an invite?",
+    landingHint:"If someone already inside sent you a link or a code, use it below. Otherwise, create the circle yourself.",
+    landingCreateBtn:"Create a new circle",
+    landingInviteLabel:"Have an invite from someone already inside?",
+    landingInvitePh:"Paste the link or the code here",
+    landingInviteBtn:"Enter with the invite",
+    toastInviteInvalid:"I don't recognize this link or code. Check it and try again.",
     joinEyebrow:"Closed circle", joinTitle:"What's your name?",
     joinHint:"Someone already inside will need to let you in.",
     joinEyebrowCreate:"New circle",
