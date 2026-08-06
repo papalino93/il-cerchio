@@ -29,7 +29,7 @@ let TASKS = I18N[LANG].tasks, WHENS = I18N[LANG].whens, DETAILS = I18N[LANG].det
 let setup = Object.assign({ name:"", place:"", size:0, conditions:"" }, store.get(KEY_SETUP, {}));
 let myName = store.get(KEY_MYNAME, "");
 let myMemberId = "";
-let draft = { task:null, lists:{}, texts:{}, when:null, day:"", words:"" };
+let draft = { task:null, lists:{}, texts:{}, when:null, day:"", words:"", attachments:[] };
 let editingTaskId = null;
 let room = { _v:"", setup:{ name:"", place:"", size:0, lang:LANG }, tasks:[], members:[], pending:[] };
 let ROOM_CODE = "";
@@ -180,6 +180,11 @@ async function loadRoom(silent){
     applyRoomHeader();
     if (current === "board") renderBoard();
     if (current === "waiting" && myStatus() === "member") { go("board", TP().toastBenvenuto); toast(TP().toastBenvenuto); }
+    /* renderTaskLabelEditor() apposta NON è richiamata qui: un
+       aggiornamento arrivato mentre la persona sta ancora scrivendo
+       (dal polling, o da un caricamento iniziale ancora in corso)
+       cancellerebbe in silenzio quello che ha appena digitato. Si
+       ridisegna solo quando le impostazioni vengono aperte davvero. */
     if (current === "settings") { renderMembers(); renderPending(); }
     if (current === "join") paintJoinView();
     return true;
@@ -232,12 +237,13 @@ function go(key, announce){
       reduced() ? 0 : 260);
     if (announce) el("live").textContent = announce;
     current = key;
+    el("coffeeFab").classList.toggle("expanded", key === "landing");
     if (key === "board") renderBoard();
     if (key === "join") { el("f-joinname").value = myName; paintJoinView(); }
     if (key === "settings"){
       el("room-link-display").textContent = roomUrl();
       el("personal-link-display").textContent = personalUrl();
-      renderMembers(); renderPending();
+      renderMembers(); renderPending(); renderTaskLabelEditor();
     }
   };
   if (current && !reduced()){
@@ -316,8 +322,23 @@ function applyRoomHeader(){
   el("count-label").textContent = TP().countLabel(size);
 }
 
+/* I titoli/dettagli dei pulsanti predefiniti (TASKS) si possono
+   sovrascrivere per famiglia (room.setup.taskLabels), per adattarli alla
+   situazione di ciascuno — es. "Lavastoviglie" diventa "Giardino" se in
+   quella casa non serve la lavastoviglie. Icona e comportamento del
+   dettaglio (lista o testo libero) restano quelli del tipo originale:
+   solo il testo cambia. Usata sia per i pulsanti del compositore sia per
+   i compiti già sulla bacheca, così la rinomina vale ovunque. */
+function effectiveTasks(){
+  const overrides = (room.setup && room.setup.taskLabels) || {};
+  return TASKS.map(t => {
+    const o = overrides[t.id];
+    return o ? { ...t, t: o.t || t.t, h: o.h || t.h } : t;
+  });
+}
+
 function taskDisplay(t){
-  const def = TASKS.find(x => x.id === t.taskType);
+  const def = effectiveTasks().find(x => x.id === t.taskType);
   const genericTitle = def ? def.t : t.taskType;
   const title = (t.taskType === "altro" && t.detail) ? t.detail : genericTitle;
   const w = WHENS.find(x => x.id === t.when);
@@ -354,9 +375,13 @@ function taskRow(t){
     `<button class="edit-btn" type="button" data-act="edit" data-id="${t.id}" aria-label="${esc(S().editTaskAria)}">
        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
      </button>`;
+  const attach = (t.attachments && t.attachments.length)
+    ? `<div class="task-attach">${t.attachments.map(url =>
+        `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer"><img src="${esc(url)}" alt=""></a>`).join("")}</div>`
+    : "";
   return `<div class="task-row ${t.status === "done" ? "done" : ""}" data-id="${t.id}">
     <div class="task-row-ico">${svg(d.icon)}</div>
-    <div class="task-row-body"><b>${esc(d.title)}</b><small>${esc(metaBits)}</small>${who}</div>
+    <div class="task-row-body"><b>${esc(d.title)}</b><small>${esc(metaBits)}</small>${who}${attach}</div>
     ${editBtn}
     <div class="task-row-actions">${actions}</div>
   </div>`;
@@ -447,7 +472,7 @@ el("btn-share-personal").onclick = () => { buzz(); share(personalUrl()); };
 
 /* ========================== 8 · COMPOSITORE ========================== */
 function renderComposerLists(){
-  el("tiles").innerHTML = TASKS.map(t =>
+  el("tiles").innerHTML = effectiveTasks().map(t =>
     `<button class="tile" type="button" data-id="${t.id}" aria-pressed="false">
        <span class="tile-head">${svg(t.icon)}<span class="tick" aria-hidden="true" hidden>✓</span></span>
        <span class="tile-body"><b>${esc(t.t)}</b><small>${esc(t.h)}</small></span>
@@ -465,22 +490,24 @@ function renderComposerLists(){
 
 function resetComposer(){
   editingTaskId = null;
-  draft = { task:null, lists:{}, texts:{}, when:null, day:"", words:"" };
+  draft = { task:null, lists:{}, texts:{}, when:null, day:"", words:"", attachments:[] };
   el("f-words").value = ""; el("f-day").value = "";
   el("d-value").value = ""; el("d-draft").value = "";
   el("day-wrap").hidden = true; el("detail").hidden = true;
   el("btn-send").textContent = S().addTaskBtn;
   renderComposerLists();
+  renderAttachList();
 }
 
 function openEditTask(t){
   editingTaskId = t.id;
-  draft = { task:t.taskType, lists:{}, texts:{}, when:t.when || null, day:t.day || "", words:t.note || "" };
+  draft = { task:t.taskType, lists:{}, texts:{}, when:t.when || null, day:t.day || "", words:t.note || "", attachments:[...(t.attachments || [])] };
   const cfg = DETAILS[t.taskType];
   if (cfg && cfg.kind === "list") draft.lists[t.taskType] = [...(t.list || [])];
   else draft.texts[t.taskType] = t.detail || "";
   renderComposerLists();
   paintDetail();
+  renderAttachList();
   el("f-words").value = draft.words;
   el("f-day").value = draft.day;
   el("day-wrap").hidden = draft.when !== "giorno";
@@ -558,6 +585,78 @@ function paintDetail(){
   }
 }
 
+/* ========================== 8b · ALLEGATI ========================== */
+const MAX_ATTACH_SIDE = 1600; // px sul lato lungo: abbastanza per leggere una lista scritta a mano
+const MAX_ATTACHMENTS = 6;
+
+function resizeImageToDataUrl(file){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read_failed"));
+    reader.onload = () => {
+      img.onerror = () => reject(new Error("decode_failed"));
+      img.onload = () => {
+        const scale = Math.min(1, MAX_ATTACH_SIDE / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderAttachList(){
+  el("attach-list").innerHTML = draft.attachments.map((url, i) =>
+    `<div class="attach-item"><img src="${esc(url)}" alt="">
+       <button class="rm" type="button" data-i="${i}" aria-label="${esc(S().attachRemoveAria)}">×</button>
+     </div>`).join("");
+  el("attach-list").querySelectorAll(".rm").forEach(b => b.onclick = () => {
+    buzz();
+    draft.attachments.splice(+b.dataset.i, 1);
+    renderAttachList();
+  });
+}
+
+async function addAttachmentFile(file){
+  if (draft.attachments.length >= MAX_ATTACHMENTS){ toast(S().toastAttachLimit); return; }
+  const placeholder = document.createElement("div");
+  placeholder.className = "attach-item uploading";
+  el("attach-list").appendChild(placeholder);
+  try {
+    const dataUrl = await resizeImageToDataUrl(file);
+    if (dataUrl.length > 7_000_000){ toast(S().toastAttachTooBig); placeholder.remove(); return; }
+    const res = await fetch("/api/upload", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ code: ROOM_CODE, memberId: myMemberId, dataUrl })
+    });
+    if (!res.ok) throw new Error("upload_failed");
+    const { url } = await res.json();
+    draft.attachments.push(url);
+    renderAttachList();
+  } catch (e){
+    toast(S().toastAttachError);
+    placeholder.remove();
+  }
+}
+
+el("btn-attach").onclick = () => { buzz(); el("f-attach").click(); };
+el("f-attach").addEventListener("change", async () => {
+  const files = Array.from(el("f-attach").files || []);
+  el("f-attach").value = "";
+  if (!files.length) return;
+  toast(S().toastAttachUploading);
+  for (const file of files){
+    if (draft.attachments.length >= MAX_ATTACHMENTS){ toast(S().toastAttachLimit); break; }
+    await addAttachmentFile(file);
+  }
+});
+
 el("btn-add-task").onclick = () => { buzz(); resetComposer(); go("compose"); };
 el("btn-cancel-compose").onclick = () => { buzz(); editingTaskId = null; el("btn-send").textContent = S().addTaskBtn; go("board"); };
 
@@ -572,6 +671,7 @@ el("btn-send").onclick = async () => {
     detail: cfg.kind === "text" ? (draft.texts[draft.task] || "").trim() : "",
     list: cfg.kind === "list" ? (draft.lists[draft.task] || []) : [],
     note: (draft.words || "").trim(),
+    attachments: draft.attachments,
     lang: LANG
   };
   try {
@@ -605,6 +705,45 @@ el("btn-nudge-skip").onclick  = () => { buzz(); hideNudge(); };
 el("btn-nudge-join").onclick  = () => { buzz(); share(TP().shareJoinMsg(roomUrl())); };
 
 /* ========================== 9 · IMPOSTAZIONI ========================== */
+/* ========================== 8b · COMPITI PERSONALIZZATI ========================== */
+function renderTaskLabelEditor(){
+  const box = el("tasklabel-editor"); if (!box) return;
+  const presets = TASKS.filter(t => t.id !== "altro");
+  const overrides = (room.setup && room.setup.taskLabels) || {};
+  box.innerHTML = presets.map(t => {
+    const o = overrides[t.id];
+    const tv = esc(o && o.t ? o.t : t.t);
+    const hv = esc(o && o.h ? o.h : t.h);
+    return `<div class="task-row" style="align-items:flex-start">
+      <div class="task-row-ico">${svg(t.icon)}</div>
+      <div class="task-row-body" style="flex:1 1 auto">
+        <input class="input" data-tl-id="${t.id}" data-tl-field="t" value="${tv}" maxlength="40" style="margin-bottom:6px">
+        <input class="input" data-tl-id="${t.id}" data-tl-field="h" value="${hv}" maxlength="60">
+      </div>
+    </div>`;
+  }).join("");
+}
+el("btn-save-tasklabels").onclick = async () => {
+  buzz();
+  const box = el("tasklabel-editor");
+  const taskLabels = {};
+  TASKS.filter(t => t.id !== "altro").forEach(t => {
+    const tIn = box.querySelector(`[data-tl-id="${t.id}"][data-tl-field="t"]`);
+    const hIn = box.querySelector(`[data-tl-id="${t.id}"][data-tl-field="h"]`);
+    const tv = (tIn && tIn.value || "").trim();
+    const hv = (hIn && hIn.value || "").trim();
+    taskLabels[t.id] = { t: tv || t.t, h: hv || t.h };
+  });
+  try {
+    await withRoom(apiPost({ action:"saveSetup", setup:{ name:setup.name, place:setup.place, size:setup.size, lang:LANG, taskLabels } }));
+    toast(S().toastTaskLabelsSaved);
+    renderComposerLists();
+    renderTaskLabelEditor();
+  } catch (e){
+    toast(TP().loadError);
+  }
+};
+
 function openSettings(){
   buzz();
   el("f-myname").value = myName;
@@ -615,6 +754,7 @@ function openSettings(){
   el("room-link-display").textContent = roomUrl();
   el("personal-link-display").textContent = personalUrl();
   refreshNotifyUI();
+  renderTaskLabelEditor();
   go("settings");
 }
 el("btn-settings").onclick = openSettings;

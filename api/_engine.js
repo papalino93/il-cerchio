@@ -24,7 +24,7 @@ function prefix(code) {
 }
 
 function emptyRoom() {
-  return { _v: '', setup: { name: '', place: '', size: 0, lang: 'it' }, tasks: [], members: [], pending: [], pushSubs: {} };
+  return { _v: '', setup: { name: '', place: '', size: 0, lang: 'it', taskLabels: {} }, tasks: [], members: [], pending: [], pushSubs: {} };
 }
 
 /* Vercel Blob serve i contenuti tramite CDN: sovrascrivere lo stesso
@@ -50,6 +50,7 @@ async function readRoom(code) {
     const data = await res.json();
     if (!data || typeof data !== 'object') return emptyRoom();
     data.setup = data.setup || emptyRoom().setup;
+    data.setup.taskLabels = (data.setup.taskLabels && typeof data.setup.taskLabels === 'object') ? data.setup.taskLabels : {};
     data.tasks = Array.isArray(data.tasks) ? data.tasks : [];
     data.members = Array.isArray(data.members) ? data.members : [];
     data.pending = Array.isArray(data.pending) ? data.pending : [];
@@ -82,6 +83,17 @@ async function writeRoom(code, room) {
 
 function rid() {
   return 't_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+}
+
+const MAX_ATTACHMENTS = 6;
+// Gli URL arrivano da /api/upload (Vercel Blob pubblico): qui verifichiamo
+// solo la forma (https, lunghezza ragionevole), non serve altro dato che
+// il caricamento è già passato dal controllo di appartenenza.
+function sanitizeAttachments(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter(u => typeof u === 'string' && /^https:\/\/.{1,290}$/.test(u))
+    .slice(0, MAX_ATTACHMENTS);
 }
 
 function isMember(room, id) {
@@ -218,11 +230,27 @@ function createHandler(title) {
       delete room.pushSubs[body.memberId];
     } else if (action === 'saveSetup') {
       const s = body.setup || {};
+      // I pulsanti dei compiti (titolo e dettaglio) si possono rinominare per
+      // adattarli alla situazione di ciascuna famiglia (es. "Lavastoviglie" →
+      // "Giardino"). Se questa richiesta non tocca le personalizzazioni,
+      // quelle già salvate restano intatte invece di sparire.
+      let taskLabels = (room.setup && room.setup.taskLabels) || {};
+      if (s.taskLabels && typeof s.taskLabels === 'object') {
+        taskLabels = {};
+        for (const key of Object.keys(s.taskLabels).slice(0, 30)) {
+          const id = String(key).slice(0, 30);
+          const v = s.taskLabels[key] || {};
+          const t = String(v.t || '').slice(0, 40);
+          const h = String(v.h || '').slice(0, 60);
+          if (t || h) taskLabels[id] = { t, h };
+        }
+      }
       room.setup = {
         name: String(s.name || '').slice(0, 60),
         place: String(s.place || '').slice(0, 80),
         size: Math.max(0, Math.min(30, parseInt(s.size, 10) || 0)),
         lang: s.lang === 'en' ? 'en' : 'it',
+        taskLabels,
       };
     } else if (action === 'addTask') {
       if (room.tasks.length >= MAX_TASKS) room.tasks.shift();
@@ -235,6 +263,7 @@ function createHandler(title) {
         detail: String(t.detail || '').slice(0, 200),
         note: String(t.note || '').slice(0, 300),
         list: Array.isArray(t.list) ? t.list.slice(0, 30).map(x => String(x).slice(0, 80)) : [],
+        attachments: sanitizeAttachments(t.attachments),
         lang: t.lang === 'en' ? 'en' : 'it',
         status: 'open',
         claimedBy: '',
@@ -255,6 +284,7 @@ function createHandler(title) {
           detail: String(t.detail || '').slice(0, 200),
           note: String(t.note || '').slice(0, 300),
           list: Array.isArray(t.list) ? t.list.slice(0, 30).map(x => String(x).slice(0, 80)) : [],
+          attachments: sanitizeAttachments(t.attachments),
         };
       }
     } else if (action === 'claim' || action === 'unclaim' || action === 'done' || action === 'reopen') {
@@ -272,7 +302,7 @@ function createHandler(title) {
             room.tasks.push({
               id: rid(), taskType: src.taskType, when: src.when, day: '',
               detail: src.detail, note: src.note, list: src.list, lang: src.lang,
-              status: 'open', claimedBy: '', createdAt: Date.now(),
+              attachments: [], status: 'open', claimedBy: '', createdAt: Date.now(),
             });
           }
         }

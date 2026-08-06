@@ -282,6 +282,23 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
 .recap span{ color:var(--ink-dim); }
 .after{ margin-top:20px; font-size:17px; color:var(--ink-soft); line-height:1.5; }
 .stack-actions{ display:flex; flex-direction:column; gap:11px; padding-top:22px; }
+
+/* ---------------- allegati (foto) ---------------- */
+.attach-list{ display:flex; flex-wrap:wrap; gap:10px; }
+.attach-list:not(:empty){ margin-bottom:12px; }
+.attach-item{ position:relative; width:72px; height:72px; border-radius:12px; overflow:hidden;
+  background:var(--sand); border:1px solid var(--line-firm); flex:none; }
+.attach-item img{ width:100%; height:100%; object-fit:cover; display:block; }
+.attach-item .rm{ position:absolute; top:3px; right:3px; width:22px; height:22px; border-radius:50%;
+  background:rgb(0 0 0 / .55); color:#fff; font-size:14px; line-height:22px; text-align:center; }
+.attach-item.uploading{ display:flex; align-items:center; justify-content:center; }
+.attach-item.uploading::after{ content:""; width:20px; height:20px; border-radius:50%;
+  border:2px solid var(--line-firm); border-top-color:var(--green); animation:attach-spin .8s linear infinite; }
+@keyframes attach-spin{ to{ transform:rotate(360deg); } }
+.task-attach{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.task-attach a{ display:block; width:42px; height:42px; border-radius:9px; overflow:hidden;
+  border:1px solid var(--line-firm); flex:none; }
+.task-attach img{ width:100%; height:100%; object-fit:cover; display:block; }
 .reassure{ text-align:center; font-size:16px; color:var(--ink-dim);
   line-height:1.45; padding-top:10px; }
 
@@ -355,14 +372,22 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
    di lasciarlo sperduto nel margine su schermi larghi. */
 .coffee-fab{ position:fixed; right:max(16px, calc(50vw - 280px + 16px));
   bottom:calc(16px + env(safe-area-inset-bottom, 0px)); z-index:40;
-  width:44px; height:44px; border-radius:50%; flex:none;
-  display:flex; align-items:center; justify-content:center;
+  height:44px; min-width:44px; max-width:44px; padding:0 12px;
+  border-radius:999px; overflow:hidden; flex:none;
+  display:flex; align-items:center; gap:8px;
   background:var(--green); color:var(--on-green); text-decoration:none;
-  box-shadow:0 4px 14px rgb(0 0 0 / .28); transition:transform .15s; }
-.coffee-fab svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.7;
+  box-shadow:0 4px 14px rgb(0 0 0 / .28);
+  transition:max-width .25s ease, transform .15s; }
+.coffee-fab svg{ width:20px; height:20px; flex:none; stroke:currentColor; fill:none; stroke-width:1.7;
   stroke-linecap:round; stroke-linejoin:round; }
-.coffee-fab:hover{ transform:scale(1.08); }
-.coffee-fab:active{ transform:scale(.94); }
+.coffee-fab-label{ font-size:14px; font-weight:700; white-space:nowrap; }
+/* Sulla prima schermata (nessuno ha ancora capito cosa sia il sito) il
+   pulsante è già "aperto" con la scritta, invece di essere solo
+   un'iconcina che si può non notare. Altrove resta compatto e si apre
+   al passaggio del mouse o al focus da tastiera. */
+.coffee-fab:hover, .coffee-fab:focus-visible, .coffee-fab.expanded{ max-width:220px; }
+.coffee-fab:hover{ transform:scale(1.04); }
+.coffee-fab:active{ transform:scale(.96); }
 
 /* ---------------- stanza condivisa / bacheca ---------------- */
 .tasklist{ display:flex; flex-direction:column; gap:10px; }
@@ -401,6 +426,7 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
 
 <a class="coffee-fab" id="coffeeFab" href="#" target="_blank" rel="noopener noreferrer" title="Offrimi un caffè" aria-label="Offrimi un caffè">
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 9h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M8 3c-.5 1 .5 1.5 0 3M12 3c-.5 1 .5 1.5 0 3"/></svg>
+  <span class="coffee-fab-label" aria-hidden="true" data-i18n="coffeeFabLabel">Offrimi un caffè</span>
 </a>
 
 <div class="shell">
@@ -569,6 +595,17 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
         <textarea class="input" id="f-words" rows="2" aria-labelledby="s3" data-i18n-ph="wordsPlaceholder"></textarea>
       </div>
 
+      <div class="block">
+        <div>
+          <p class="eyebrow" data-i18n="attachEyebrow">Facoltativo</p>
+          <h2 class="step" id="s4" data-i18n="attachTitle">Allega una foto</h2>
+          <p class="hint" data-i18n="attachHint">Lista della spesa, ricetta, tessera sanitaria: quello che serve a chi se ne occupa.</p>
+        </div>
+        <div id="attach-list" class="attach-list"></div>
+        <input type="file" id="f-attach" accept="image/*" multiple hidden>
+        <button class="btn quiet" id="btn-attach" type="button" data-i18n="attachBtn">+ Aggiungi foto</button>
+      </div>
+
       <div class="stack-actions">
         <button class="btn primary" id="btn-send" type="button" data-i18n="addTaskBtn">Aggiungi</button>
         <button class="btn quiet" id="btn-cancel-compose" type="button" data-i18n="cancelBtn">Annulla</button>
@@ -676,6 +713,13 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
 
       <button class="btn primary" id="btn-save" style="margin-top:30px" data-i18n="saveBtn">Salva</button>
 
+      <div class="block" style="margin-top:30px">
+        <p class="eyebrow" data-i18n="taskLabelsEyebrow">Personalizza i compiti</p>
+        <p class="hint" data-i18n="taskLabelsHint"></p>
+        <div id="tasklabel-editor" style="display:flex;flex-direction:column;gap:14px;margin-top:10px"></div>
+        <button class="btn quiet" id="btn-save-tasklabels" type="button" style="margin-top:4px" data-i18n="saveTaskLabelsBtn">Salva i compiti personalizzati</button>
+      </div>
+
       <div class="block">
         <p class="eyebrow" data-i18n="langEyebrow">Lingua</p>
         <div class="lang-pair" id="lang-pair" role="group" style="margin-top:9px">
@@ -733,6 +777,13 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
     step3Eyebrow:"Facoltativo", step3Title:"Una nota",
     step3Hint:"Se vuoi aggiungere un dettaglio o un promemoria, scrivilo qui.",
     wordsPlaceholder:"Il detersivo per i piatti è quasi finito.",
+    attachEyebrow:"Facoltativo", attachTitle:"Allega una foto",
+    attachHint:"Lista della spesa, ricetta, tessera sanitaria: quello che serve a chi se ne occupa.",
+    attachBtn:"+ Aggiungi foto", attachRemoveAria:"Togli questa foto",
+    toastAttachUploading:"Carico la foto…",
+    toastAttachTooBig:"Questa foto è troppo grande, provane un'altra.",
+    toastAttachError:"Non sono riuscito a caricare la foto. Riprova.",
+    toastAttachLimit:"Puoi allegare al massimo 6 foto per compito.",
     settingsLink:"Impostazioni", copyLink:"Copia il link", coffeeBtn:"Offrimi un caffè",
     settingsTitle:"Impostazioni", settingsHint:"Restano su questo telefono. Non escono da qui.",
     nameLabel:"Come si chiama", placeLabel:"Dove abita",
@@ -740,6 +791,10 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
     condHint:"Serve a te, non viene mandato a nessuno. Chiediglielo, non deciderlo tu.",
     condPlaceholder:"Cucina da sola. In camera entra solo Anna. Non vuole aiuto in bagno.",
     saveBtn:"Salva", langLabel:"Lingua", langSwitchAria:"Cambia lingua",
+    taskLabelsEyebrow:"Personalizza i compiti",
+    taskLabelsHint:"Se un compito qui sotto non si applica alla vostra situazione, riscrivi titolo e dettaglio come preferisci: valgono per tutti quelli che usano questo cerchio.",
+    saveTaskLabelsBtn:"Salva i compiti personalizzati",
+    toastTaskLabelsSaved:"Compiti personalizzati salvati.",
     reassure:"Se non riesci va bene.<br>Lo vede qualcun altro.",
     addTaskBtn:"Nuovo compito", cancelBtn:"Annulla",
     boardOpenLabel:"Da fare", boardClaimedLabel:"In corso", boardDoneLabel:"Fatto",
@@ -847,6 +902,7 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
     toastCopiaFallita:"Copia non riuscita: seleziona il testo a mano.",
     toastSalvatoOk:"Salvato.",
     toastCoffeeMissing:"Aggiungi il tuo link nel codice (COFFEE_URL) per attivare questo pulsante.",
+    coffeeFabLabel:"Offrimi un caffè",
     announceImpostazioniSalvate:"Impostazioni salvate.",
     announceAggiunto:"Aggiunto alla bacheca."
   }
@@ -861,6 +917,13 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
     step3Eyebrow:"Optional", step3Title:"A note",
     step3Hint:"If you want to add a detail or a reminder, write it here.",
     wordsPlaceholder:"The dish soap is almost out.",
+    attachEyebrow:"Optional", attachTitle:"Attach a photo",
+    attachHint:"Shopping list, prescription, health card: whatever helps whoever's taking care of it.",
+    attachBtn:"+ Add photo", attachRemoveAria:"Remove this photo",
+    toastAttachUploading:"Uploading the photo…",
+    toastAttachTooBig:"This photo is too big, try another one.",
+    toastAttachError:"Couldn't upload the photo. Try again.",
+    toastAttachLimit:"You can attach up to 6 photos per task.",
     settingsLink:"Settings", copyLink:"Copy the link", coffeeBtn:"Buy me a coffee",
     settingsTitle:"Settings", settingsHint:"These stay on this phone. They don't leave here.",
     nameLabel:"Her name", placeLabel:"Where she lives",
@@ -868,6 +931,10 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
     condHint:"This is for you, it's never sent to anyone. Ask her, don't decide for her.",
     condPlaceholder:"Cooks on her own. Only Anna comes into the bedroom. Doesn't want help in the bathroom.",
     saveBtn:"Save", langLabel:"Language", langSwitchAria:"Change language",
+    taskLabelsEyebrow:"Customize the tasks",
+    taskLabelsHint:"If a task below doesn't apply to your situation, rewrite its title and detail however you like: it changes for everyone using this circle.",
+    saveTaskLabelsBtn:"Save the custom tasks",
+    toastTaskLabelsSaved:"Custom tasks saved.",
     reassure:"It's okay if you can't.<br>Someone else will see it.",
     addTaskBtn:"New task", cancelBtn:"Cancel",
     boardOpenLabel:"To do", boardClaimedLabel:"In progress", boardDoneLabel:"Done",
@@ -975,6 +1042,7 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
     toastCopiaFallita:"Copy failed: select the text by hand.",
     toastSalvatoOk:"Saved.",
     toastCoffeeMissing:"Add your link in the code (COFFEE_URL) to enable this button.",
+    coffeeFabLabel:"Buy me a coffee",
     announceImpostazioniSalvate:"Settings saved.",
     announceAggiunto:"Added to the board."
   }
