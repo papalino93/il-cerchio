@@ -5,6 +5,7 @@
 
 const { list, put, del } = require('@vercel/blob');
 const webpush = require('web-push');
+const crypto = require('crypto');
 
 const CODE_RE = /^[a-z0-9]{4,24}$/i;
 const MAX_TASKS = 200;
@@ -24,7 +25,54 @@ function prefix(code) {
 }
 
 function emptyRoom() {
-  return { _v: '', setup: { name: '', place: '', size: 0, lang: 'it', taskLabels: {} }, tasks: [], members: [], pending: [], pushSubs: {} };
+  return {
+    _v: '', setup: { name: '', place: '', size: 0, lang: 'it', taskLabels: {} },
+    tasks: [], members: [], pending: [], pushSubs: {},
+    // owner: id del membro che ha creato lo spazio (il "creatore"). Solo lui
+    // può togliere altri membri e impostare/cambiare il PIN di recupero
+    // sotto — chi si limita a partecipare (es. un figlio) resta un membro
+    // qualunque, senza bisogno di alcuna password.
+    owner: '',
+    // pinHash: "salt:hash" (scrypt), mai il PIN in chiaro. Serve solo al
+    // creatore per rientrare da un telefono/browser che ha perso i dati
+    // locali (vedi azione "recoverWithPin"), senza dover essere
+    // riapprovato da qualcun altro come un membro nuovo.
+    pinHash: '', pinFails: 0, pinLockedUntil: 0,
+  };
+}
+
+// PIN di recupero del creatore: hashato con scrypt (nativo di Node, niente
+// dipendenze in più), mai salvato o restituito in chiaro. Il confronto usa
+// timingSafeEqual per non far trapelare via timing quanto del PIN è giusto.
+function hashPin(pin) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(pin, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+function verifyPin(pin, stored) {
+  if (!stored || typeof stored !== 'string') return false;
+  const [salt, hash] = stored.split(':');
+  if (!salt || !hash) return false;
+  try {
+    const check = crypto.scryptSync(pin, salt, 64);
+    const expected = Buffer.from(hash, 'hex');
+    return check.length === expected.length && crypto.timingSafeEqual(check, expected);
+  } catch {
+    return false;
+  }
+}
+
+// Toglie dalla risposta i dati che non devono uscire dal server (abbonamenti
+// push, hash e contatori del PIN) e aggiunge hasPin/owner, gli unici due
+// bit che servono al client per decidere cosa mostrare.
+function sanitizeForClient(room) {
+  const out = { ...room };
+  delete out.pushSubs;
+  out.hasPin = !!out.pinHash;
+  delete out.pinHash;
+  delete out.pinFails;
+  delete out.pinLockedUntil;
+  return out;
 }
 
 /* Vercel Blob serve i contenuti tramite CDN: sovrascrivere lo stesso
@@ -55,6 +103,18 @@ async function readRoom(code) {
     data.members = Array.isArray(data.members) ? data.members : [];
     data.pending = Array.isArray(data.pending) ? data.pending : [];
     data.pushSubs = data.pushSubs && typeof data.pushSubs === 'object' ? data.pushSubs : {};
+    // Spazi creati prima del "creatore": se non c'è un owner valido, lo
+    // spazio non è orfano, semplicemente non l'avevamo ancora registrato.
+    // Diventa owner chi è dentro da più tempo — la prossima scrittura lo
+    // rende definitivo. Stesso ragionamento se il creatore se n'è andato:
+    // il ruolo passa a chi è rimasto da più tempo, invece di sparire.
+    if (!data.owner || !data.members.some(m => m.id === data.owner)) {
+      const oldest = data.members.slice().sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0))[0];
+      data.owner = oldest ? oldest.id : '';
+    }
+    data.pinHash = typeof data.pinHash === 'string' ? data.pinHash : '';
+    data.pinFails = Number.isFinite(data.pinFails) ? data.pinFails : 0;
+    data.pinLockedUntil = Number.isFinite(data.pinLockedUntil) ? data.pinLockedUntil : 0;
     data._v = latest.pathname.slice(prefix(code).length).replace(/\.json$/, '');
     return data;
   } catch {
@@ -124,8 +184,10 @@ async function notifyOthers(room, excludeId, body, NOTIFY) {
 // Azioni che richiedono di essere già dentro lo spazio (cerchio/gruppo).
 const MEMBER_ONLY = new Set([
   'saveSetup', 'addTask', 'editTask', 'claim', 'unclaim', 'done', 'reopen', 'remove', 'clearDone',
-  'approve', 'deny', 'savePush', 'removePush', 'removeMember',
+  'approve', 'deny', 'savePush', 'removePush', 'removeMember', 'setPin',
 ]);
+// "recoverWithPin" apposta NON è qui dentro: chi la usa non è (ancora) un
+// membro riconosciuto su questo dispositivo — è tutto il punto dell'azione.
 
 const RECURRING = new Set(['ognigiorno', 'ricorrente']);
 
@@ -148,8 +210,7 @@ function createHandler(title) {
 
     if (req.method === 'GET') {
       const room = await readRoom(code);
-      delete room.pushSubs; // non serve al client, e sono dati di consegna, non di stanza
-      res.status(200).json(room);
+      res.status(200).json(sanitizeForClient(room));
       return;
     }
 
@@ -188,8 +249,10 @@ function createHandler(title) {
       } else if (room.pending.some(p => p.id === id)) {
         room.pending = room.pending.map(p => p.id === id ? { ...p, name } : p);
       } else if (room.members.length === 0) {
-        // primo arrivo: lo spazio è vuoto, chi lo crea entra subito
+        // primo arrivo: lo spazio è vuoto, chi lo crea entra subito ed è il
+        // "creatore" (owner) — vedi emptyRoom() più sopra.
         room.members.push({ id, name, joinedAt: Date.now() });
+        room.owner = id;
       } else {
         if (room.pending.length >= MAX_MEMBERS) room.pending.shift();
         room.pending.push({ id, name, requestedAt: Date.now() });
@@ -215,13 +278,48 @@ function createHandler(title) {
       room.members = room.members.filter(m => m.id !== body.memberId);
       delete room.pushSubs[body.memberId];
     } else if (action === 'removeMember') {
-      // Chiunque sia dentro può togliere chiunque altro (stessa logica
-      // simmetrica dell'approvazione), ma non se stesso: per quello c'è "leave".
+      // Solo il creatore può togliere qualcun altro dal gruppo — è
+      // un'azione distruttiva, non va lasciata a chiunque sia dentro.
+      if (room.owner && body.memberId !== room.owner) {
+        res.status(403).json({ error: 'not_owner' }); return;
+      }
       const id = String(body.id || '');
       if (id && id !== body.memberId) {
         room.members = room.members.filter(m => m.id !== id);
         delete room.pushSubs[id];
       }
+    } else if (action === 'setPin') {
+      // Solo il creatore può impostare/cambiare il proprio PIN di recupero.
+      if (room.owner && body.memberId !== room.owner) {
+        res.status(403).json({ error: 'not_owner' }); return;
+      }
+      const pin = String(body.pin || '');
+      if (!/^\d{4,8}$/.test(pin)) { res.status(400).json({ error: 'invalid_pin' }); return; }
+      room.pinHash = hashPin(pin);
+      room.pinFails = 0; room.pinLockedUntil = 0;
+    } else if (action === 'recoverWithPin') {
+      // Rientro del creatore da un telefono/browser che ha perso i dati
+      // locali: codice della stanza (già verificato) + PIN, niente
+      // approvazione di nessuno. Blocco temporaneo dopo troppi tentativi
+      // sbagliati, per non rendere il PIN forzabile a forza di richieste.
+      const now = Date.now();
+      if (room.pinLockedUntil && now < room.pinLockedUntil) {
+        res.status(429).json({ error: 'pin_locked', retryAt: room.pinLockedUntil }); return;
+      }
+      if (!room.pinHash) { res.status(400).json({ error: 'no_pin' }); return; }
+      const newId = String(body.memberId || '');
+      if (!/^m_[a-z0-9]+$/i.test(newId)) { res.status(400).json({ error: 'missing_fields' }); return; }
+      if (!verifyPin(String(body.pin || ''), room.pinHash)) {
+        room.pinFails = (room.pinFails || 0) + 1;
+        if (room.pinFails >= 5) { room.pinLockedUntil = now + 15 * 60 * 1000; room.pinFails = 0; }
+        await writeRoom(code, room);
+        res.status(403).json({ error: 'wrong_pin' }); return;
+      }
+      room.pinFails = 0; room.pinLockedUntil = 0;
+      const idx = room.members.findIndex(m => m.id === room.owner);
+      if (idx !== -1) room.members[idx] = { ...room.members[idx], id: newId };
+      else room.members.push({ id: newId, name: String(body.name || '').slice(0, 60) || '?', joinedAt: now });
+      room.owner = newId;
     } else if (action === 'savePush') {
       const sub = body.sub;
       if (!sub || !sub.endpoint) { res.status(400).json({ error: 'missing_fields' }); return; }
@@ -323,9 +421,7 @@ function createHandler(title) {
     }
 
     await writeRoom(code, room);
-    const out = { ...room };
-    delete out.pushSubs;
-    res.status(200).json(out);
+    res.status(200).json(sanitizeForClient(room));
   };
 }
 

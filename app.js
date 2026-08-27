@@ -31,7 +31,7 @@ let myName = store.get(KEY_MYNAME, "");
 let myMemberId = "";
 let draft = { task:null, lists:{}, texts:{}, when:null, day:"", words:"", attachments:[] };
 let editingTaskId = null;
-let room = { _v:"", setup:{ name:"", place:"", size:0, lang:LANG }, tasks:[], members:[], pending:[] };
+let room = { _v:"", setup:{ name:"", place:"", size:0, lang:LANG }, tasks:[], members:[], pending:[], owner:"", hasPin:false };
 let ROOM_CODE = "";
 let current = null;
 let pollTimer = null;
@@ -89,19 +89,56 @@ function hasRoomContext(){
 }
 
 // Riconosce sia un link completo (?r=codice, anche dentro testo incollato
-// con altra roba intorno) sia il codice nudo, incollati a mano.
-function extractRoomCode(raw){
+// con altra roba intorno) sia il codice nudo, incollati a mano. Se il testo
+// incollato è il proprio "link personale" (?r=codice&m=iltuoid — quello che
+// "Impostazioni → Il tuo link personale" fa mandare a se stessi apposta per
+// rientrare da un telefono/browser che ha perso i dati locali), viene
+// riconosciuto anche l'id membro: senza questo, incollarlo qui dentro
+// riportava sì nel gruppo giusto ma come persona nuova in attesa di
+// autorizzazione, vanificando l'unico modo per recuperare l'accesso senza
+// chiedere il permesso a qualcun altro.
+function extractInvite(raw){
   const text = String(raw || "").trim();
   if (!text) return null;
+  let code = null, memberId = null;
   try {
     const u = new URL(text);
     const q = u.searchParams.get("r");
-    if (q && /^[a-z0-9]{4,24}$/i.test(q)) return q.toLowerCase();
+    if (q && /^[a-z0-9]{4,24}$/i.test(q)) code = q.toLowerCase();
+    const m = u.searchParams.get("m");
+    if (m && /^m_[a-z0-9]+$/i.test(m)) memberId = m;
   } catch {}
-  if (/^[a-z0-9]{4,24}$/i.test(text)) return text.toLowerCase();
-  const m = text.match(/[?&]r=([a-z0-9]{4,24})/i);
-  return m ? m[1].toLowerCase() : null;
+  if (!code){
+    if (/^[a-z0-9]{4,24}$/i.test(text)) code = text.toLowerCase();
+    else {
+      const m = text.match(/[?&]r=([a-z0-9]{4,24})/i);
+      if (m) code = m[1].toLowerCase();
+    }
+  }
+  if (!memberId){
+    const m = text.match(/[?&]m=(m_[a-z0-9]+)/i);
+    if (m) memberId = m[1];
+  }
+  return code ? { code, memberId } : null;
 }
+
+/* ========================== 3b · BROWSER-IN-APP ========================== */
+/* WhatsApp/Instagram/Facebook/TikTok/... aprono i link condivisi dentro un
+   loro browser incorporato, non nel Safari/Chrome vero del telefono: su
+   molti telefoni (soprattutto Android) quel browser non conserva i dati
+   salvati (localStorage) da un'apertura all'altra. Effetto concreto: si
+   perdono il codice del gruppo e l'id personale, e alla riapertura l'app
+   non riconosce più nessuno spazio esistente — mostrando "crea un nuovo
+   gruppo" anche a chi il gruppo ce l'ha già da settimane. È la causa più
+   probabile di quel problema, quindi lo segnaliamo appena possibile. */
+function isInAppBrowser(){
+  return /FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|WhatsApp|musical_ly|BytedanceWebview|Snapchat/i.test(navigator.userAgent || "");
+}
+function checkInAppBrowser(){
+  if (isInAppBrowser()) el("inapp-warn").hidden = false;
+}
+el("btn-inapp-copy").onclick = () => { buzz(); copy(location.href, TP().toastLinkCopiato); };
+el("btn-inapp-dismiss").onclick = () => { buzz(); el("inapp-warn").hidden = true; };
 
 function enterRoom(){
   ROOM_CODE = resolveRoomCode();
@@ -243,7 +280,7 @@ function go(key, announce){
     if (key === "settings"){
       el("room-link-display").textContent = roomUrl();
       el("personal-link-display").textContent = personalUrl();
-      renderMembers(); renderPending(); renderTaskLabelEditor();
+      renderMembers(); renderPending(); renderTaskLabelEditor(); renderPinBox();
     }
   };
   if (current && !reduced()){
@@ -852,16 +889,39 @@ el("btn-save").onclick = async () => {
 };
 
 /* ========================== 9b · MEMBRI ========================== */
+// Solo il creatore (owner) amministra: può togliere altri membri e ha il
+// PIN di recupero (vedi renderPinBox più sotto). Chi si limita a
+// partecipare — es. un figlio invitato — non vede questi controlli.
+function iAmOwner(){ return !!(room.owner && room.owner === myMemberId); }
 function renderMembers(){
   const list = room.members || [];
   el("members-list").innerHTML = list.map(m => {
     const you = m.id === myMemberId;
-    const actions = you ? "" : `<div class="task-row-actions">
+    const owner = !!(room.owner && m.id === room.owner);
+    const tags = [you ? S().youTag : "", owner ? S().ownerTag : ""].filter(Boolean).join(" · ");
+    const actions = (!you && iAmOwner()) ? `<div class="task-row-actions">
         <button class="chip-btn" data-act="removeMember" data-id="${m.id}">${esc(S().removeBtn)}</button>
-      </div>`;
-    return `<div class="task-row"><div class="task-row-body"><b>${esc(m.name)}${you ? ` <span class="task-row-who">(${esc(S().youTag)})</span>` : ""}</b></div>${actions}</div>`;
+      </div>` : "";
+    return `<div class="task-row"><div class="task-row-body"><b>${esc(m.name)}${tags ? ` <span class="task-row-who">(${esc(tags)})</span>` : ""}</b></div>${actions}</div>`;
   }).join("") || `<p class="board-empty">—</p>`;
 }
+function renderPinBox(){
+  const mine = iAmOwner();
+  el("pin-box").hidden = !mine;
+  if (!mine) return;
+  el("pin-status").textContent = room.hasPin ? S().pinStatusOn : S().pinStatusOff;
+  el("f-pin").value = "";
+}
+el("btn-save-pin").onclick = async () => {
+  const pin = el("f-pin").value.trim();
+  if (!/^\d{4,8}$/.test(pin)){ buzz(); toast(S().toastPinInvalid); return; }
+  buzz();
+  try {
+    await withRoom(apiPost({ action:"setPin", pin }));
+    toast(S().toastPinSaved);
+    renderPinBox();
+  } catch (e){ toast(TP().loadError); }
+};
 el("members-list").addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if (!b) return;
   buzz();
@@ -916,11 +976,34 @@ el("btn-leave-circle").onclick = async () => {
 /* ========================== 9d · INGRESSO ========================== */
 el("btn-landing-create").onclick = () => { buzz(); enterRoom(); };
 el("btn-landing-invite").onclick = () => {
-  const code = extractRoomCode(el("f-landing-invite").value);
-  if (!code){ buzz(); toast(S().toastInviteInvalid); return; }
+  const invite = extractInvite(el("f-landing-invite").value);
+  if (!invite){ buzz(); toast(S().toastInviteInvalid); return; }
   buzz();
-  store.set(KEY_ROOM, code);
+  store.set(KEY_ROOM, invite.code);
+  if (invite.memberId){ store.set(KEY_MEMBER, invite.memberId); myMemberId = invite.memberId; }
   enterRoom();
+};
+// Rientro del creatore (owner) con codice del gruppo + PIN: niente
+// autorizzazione da parte di nessuno, a differenza del campo invito qui
+// sopra. Vedi renderPinBox()/btn-save-pin per come si imposta il PIN, e
+// l'azione "recoverWithPin" in api/_engine.js.
+el("btn-landing-pin").onclick = async () => {
+  const code = el("f-landing-pin-code").value.trim().toLowerCase();
+  const pin = el("f-landing-pin-pin").value.trim();
+  if (!/^[a-z0-9]{4,24}$/i.test(code) || !/^\d{4,8}$/.test(pin)){ buzz(); toast(S().toastPinInvalid); return; }
+  buzz();
+  ROOM_CODE = code;
+  try {
+    await withRoom(apiPost({ action:"recoverWithPin", pin, name:myName }));
+    store.set(KEY_ROOM, ROOM_CODE);
+    applyRoomHeader();
+    startPolling();
+    toast(TP().toastBenvenuto);
+    routeByMembership(TP().toastBenvenuto);
+  } catch (e){
+    buzz();
+    toast(e && e.status === 403 ? S().toastPinWrong : e && e.status === 429 ? S().toastPinLocked : S().toastPinInvalid);
+  }
 };
 el("btn-join").onclick = async () => {
   const name = el("f-joinname").value.trim();
@@ -943,6 +1026,7 @@ el("btn-cancel-join").onclick = async () => {
 /* ========================== 10 · AVVIO ========================== */
 applyStaticI18n();
 buildComposer();
+checkInAppBrowser();
 myMemberId = resolveMemberId();
 registerSW();
 if (hasRoomContext()) enterRoom();
