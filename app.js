@@ -142,6 +142,7 @@ el("btn-inapp-dismiss").onclick = () => { buzz(); el("inapp-warn").hidden = true
 
 function enterRoom(){
   ROOM_CODE = resolveRoomCode();
+  applyManifest();
   applyRoomHeader();
   loadRoom(false).then(() => routeByMembership());
   startPolling();
@@ -176,8 +177,21 @@ function roomUrl(){
   const clean = (location.origin + location.pathname).replace(/\?.*$/, "").replace(/#.*$/, "");
   return clean + "?r=" + ROOM_CODE;
 }
-function personalUrl(){
-  return roomUrl() + "&m=" + encodeURIComponent(myMemberId);
+function memberUrl(id){
+  return roomUrl() + "&m=" + encodeURIComponent(id);
+}
+function personalUrl(){ return memberUrl(myMemberId); }
+
+/* Il manifest statico non può sapere a quale spazio appartieni: quello
+   servito da /api/manifest sì (vedi api/_manifest.js). Va aggiornato
+   appena il codice è noto, cioè prima che a qualcuno venga in mente di
+   installare l'app — altrimenti l'icona in Home riapre una pagina senza
+   gruppo. */
+function applyManifest(){
+  try {
+    const link = document.querySelector('link[rel="manifest"]');
+    if (link && ROOM_CODE) link.href = "/api/manifest?r=" + encodeURIComponent(ROOM_CODE);
+  } catch {}
 }
 
 /* ========================== 4 · API ========================== */
@@ -203,6 +217,15 @@ function myStatus(){
   if (room.pending.some(p => p.id === myMemberId)) return "pending";
   return "none";
 }
+/* Chi entra da un link preparato dal creatore non ha mai scritto il
+   proprio nome su questo telefono: lo prendiamo da come è stato
+   registrato nel gruppo, così i compiti che si prende risultano suoi e
+   non di "Qualcuno". */
+function adoptMyName(){
+  if (myName) return;
+  const me = (room.members || []).find(m => m.id === myMemberId);
+  if (me && me.name){ myName = me.name; store.set(KEY_MYNAME, myName); }
+}
 function routeByMembership(announce){
   const st = myStatus();
   if (st === "member") go("board", announce);
@@ -214,9 +237,10 @@ async function loadRoom(silent){
   try {
     await withRoom(apiGet());
     el("warn").hidden = true;
+    adoptMyName();
     applyRoomHeader();
     if (current === "board") renderBoard();
-    if (current === "waiting" && myStatus() === "member") { go("board", TP().toastBenvenuto); toast(TP().toastBenvenuto); }
+    if (current === "waiting" && myStatus() === "member") { go("board", S().toastBenvenuto); toast(S().toastBenvenuto); }
     /* renderTaskLabelEditor() apposta NON è richiamata qui: un
        aggiornamento arrivato mentre la persona sta ancora scrivendo
        (dal polling, o da un caricamento iniziale ancora in corso)
@@ -275,7 +299,7 @@ function go(key, announce){
     if (announce) el("live").textContent = announce;
     current = key;
     el("coffeeFab").classList.toggle("expanded", key === "landing");
-    if (key === "board") renderBoard();
+    if (key === "board"){ renderBoard(); refreshInstallBox(); }
     if (key === "join") { el("f-joinname").value = myName; paintJoinView(); }
     if (key === "settings"){
       el("room-link-display").textContent = roomUrl();
@@ -851,7 +875,7 @@ el("btn-notify-on").onclick = async () => {
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     });
     await apiPost({ action:"savePush", sub: sub.toJSON() });
-    toast(TP().toastNotifyOn);
+    toast(S().toastNotifyOn);
   } catch (e){ toast(TP().loadError); }
   refreshNotifyUI();
 };
@@ -864,7 +888,7 @@ el("btn-notify-off").onclick = async () => {
       if (sub) await sub.unsubscribe();
     }
     await apiPost({ action:"removePush" });
-    toast(TP().toastNotifyOff);
+    toast(S().toastNotifyOff);
   } catch (e){}
   refreshNotifyUI();
 };
@@ -900,11 +924,33 @@ function renderMembers(){
     const owner = !!(room.owner && m.id === room.owner);
     const tags = [you ? S().youTag : "", owner ? S().ownerTag : ""].filter(Boolean).join(" · ");
     const actions = (!you && iAmOwner()) ? `<div class="task-row-actions">
+        <button class="chip-btn primary" data-act="memberLink" data-id="${m.id}">${esc(S().memberLinkBtn)}</button>
         <button class="chip-btn" data-act="removeMember" data-id="${m.id}">${esc(S().removeBtn)}</button>
       </div>` : "";
     return `<div class="task-row"><div class="task-row-body"><b>${esc(m.name)}${tags ? ` <span class="task-row-who">(${esc(tags)})</span>` : ""}</b></div>${actions}</div>`;
   }).join("") || `<p class="board-empty">—</p>`;
+  el("invite-box").hidden = !iAmOwner();
 }
+
+/* Il creatore prepara il posto di una persona e le manda il link già
+   pronto: chi lo apre è dentro subito, senza scrivere il proprio nome e
+   senza che nessuno debba autorizzarlo in quel momento. È anche il modo
+   di rimettere dentro chi ha perso l'accesso — vedi il pulsante "Link"
+   accanto a ogni membro qui sopra. */
+el("btn-create-invite").onclick = async () => {
+  const name = el("f-invite-name").value.trim();
+  if (!name){ buzz(); el("f-invite-name").focus(); return; }
+  buzz();
+  const before = (room.members || []).map(m => m.id);
+  try {
+    await withRoom(apiPost({ action:"createInvite", name }));
+    el("f-invite-name").value = "";
+    renderMembers();
+    const fresh = (room.members || []).find(m => !before.includes(m.id));
+    toast(S().toastInviteCreated);
+    if (fresh) share(TP().sharePersonalMsg(memberUrl(fresh.id)));
+  } catch (e){ toast(TP().loadError); }
+};
 function renderPinBox(){
   const mine = iAmOwner();
   el("pin-box").hidden = !mine;
@@ -925,6 +971,10 @@ el("btn-save-pin").onclick = async () => {
 el("members-list").addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if (!b) return;
   buzz();
+  if (b.dataset.act === "memberLink"){
+    share(TP().sharePersonalMsg(memberUrl(b.dataset.id)));
+    return;
+  }
   // doppio tap di conferma: il primo tap chiede "sicuro?", il secondo
   // (entro pochi secondi) rimuove davvero. Evita rimozioni per sbaglio
   // senza dover aggiungere una finestra di dialogo.
@@ -996,10 +1046,12 @@ el("btn-landing-pin").onclick = async () => {
   try {
     await withRoom(apiPost({ action:"recoverWithPin", pin, name:myName }));
     store.set(KEY_ROOM, ROOM_CODE);
+    applyManifest();
+    adoptMyName();
     applyRoomHeader();
     startPolling();
-    toast(TP().toastBenvenuto);
-    routeByMembership(TP().toastBenvenuto);
+    toast(S().toastBenvenuto);
+    routeByMembership(S().toastBenvenuto);
   } catch (e){
     buzz();
     toast(e && e.status === 403 ? S().toastPinWrong : e && e.status === 429 ? S().toastPinLocked : S().toastPinInvalid);
@@ -1012,7 +1064,7 @@ el("btn-join").onclick = async () => {
   myName = name; store.set(KEY_MYNAME, name);
   try {
     await withRoom(apiPost({ action:"join", id:myMemberId, name }));
-    toast(myStatus() === "member" ? TP().toastBenvenuto : TP().toastRichiestaInviata);
+    toast(myStatus() === "member" ? S().toastBenvenuto : S().toastRichiestaInviata);
     routeByMembership();
     if (myStatus() === "member") applyRoomHeader();
   } catch (e){ toast(TP().loadError); }
@@ -1022,6 +1074,45 @@ el("btn-cancel-join").onclick = async () => {
   try { await withRoom(apiPost({ action:"cancelJoin", id:myMemberId })); } catch (e){}
   go("join");
 };
+
+/* ========================== 9e · INSTALLA IN HOME ========================== */
+/* L'app salvata nella schermata Home è molto più difficile da far
+   dimenticare al telefono di una pagina aperta al volo dentro WhatsApp:
+   è la difesa vera contro il "mi chiede sempre di creare un nuovo
+   gruppo". Il manifest servito da /api/manifest porta dentro il codice
+   dello spazio (vedi applyManifest), quindi l'icona riapre sempre il
+   gruppo giusto, anche a memoria locale svuotata. */
+const KEY_INSTALL_OFF = "cerchio:installoff";
+let installPrompt = null;
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  installPrompt = e;
+  refreshInstallBox();
+});
+window.addEventListener("appinstalled", () => { installPrompt = null; hideInstallBox(); });
+function canOfferInstall(){
+  if (isStandalone()) return false;
+  if (store.get(KEY_INSTALL_OFF, false)) return false;
+  // Su iPhone non esiste un invito automatico: si può solo spiegare come
+  // si fa a mano (Condividi → "Aggiungi a Home").
+  return !!installPrompt || isIOS();
+}
+function refreshInstallBox(){
+  const show = current === "board" && canOfferInstall();
+  el("install-box").hidden = !show;
+  if (!show) return;
+  el("btn-install").hidden = !installPrompt;
+  el("install-ios-hint").hidden = !!installPrompt;
+}
+function hideInstallBox(){ el("install-box").hidden = true; }
+el("btn-install").onclick = async () => {
+  buzz();
+  if (!installPrompt) return;
+  try { await installPrompt.prompt(); } catch {}
+  installPrompt = null;
+  hideInstallBox();
+};
+el("btn-install-skip").onclick = () => { buzz(); store.set(KEY_INSTALL_OFF, true); hideInstallBox(); };
 
 /* ========================== 10 · AVVIO ========================== */
 applyStaticI18n();
