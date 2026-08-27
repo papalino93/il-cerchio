@@ -546,6 +546,20 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
         </div>
       </div>
 
+      <!-- Proposta di installare l'app: l'icona in Home riapre sempre lo
+           spazio giusto (il manifest porta il codice, vedi api/_manifest.js)
+           ed è molto più difficile da dimenticare per il telefono di una
+           pagina aperta dentro WhatsApp. Vedi refreshInstallBox() in app.js. -->
+      <div class="room-box" id="install-box" hidden style="margin-bottom:18px">
+        <p class="lbl" data-i18n="installTitle">Tieni l'app a portata di mano</p>
+        <p class="micro" data-i18n="installHint"></p>
+        <p class="micro" id="install-ios-hint" hidden data-i18n="installIosHint"></p>
+        <div class="pills">
+          <button class="pill" id="btn-install" type="button" hidden data-i18n="installBtn">Aggiungi alla Home</button>
+          <button class="pill bare" id="btn-install-skip" type="button" data-i18n="skipBtn">No, salta</button>
+        </div>
+      </div>
+
       <button class="btn primary" id="btn-add-task" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         <span data-i18n="addTaskBtn">Nuovo compito</span>
@@ -659,6 +673,18 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
         <div>
           <p class="lbl" data-i18n="membersLabel">Chi c'è nel cerchio</p>
           <div class="tasklist" id="members-list" style="margin-top:9px"></div>
+        </div>
+
+        <!-- Visibile solo al creatore (vedi renderMembers in app.js): prepara
+             il posto di una persona e ne ottiene il link personale già
+             pronto, senza farle fare la trafila della richiesta. -->
+        <div class="room-box" id="invite-box" hidden>
+          <p class="lbl" data-i18n="createInviteLabel">Prepara il posto di qualcuno</p>
+          <p class="micro" data-i18n="createInviteHint"></p>
+          <div class="room-box-row" style="margin-top:8px">
+            <input class="input" id="f-invite-name" autocomplete="off" maxlength="60" data-i18n-ph="createInvitePh">
+            <button class="pill" id="btn-create-invite" type="button" data-i18n="createInviteBtn">Crea l'invito</button>
+          </div>
         </div>
 
         <div class="room-box">
@@ -831,6 +857,7 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
     toastAttachError:"Non sono riuscito a caricare la foto. Riprova.",
     toastAttachLimit:"Puoi allegare al massimo 6 foto per compito.",
     settingsLink:"Impostazioni", copyLink:"Copia il link", coffeeBtn:"Offrimi un caffè",
+    coffeeFabLabel:"Offrimi un caffè",
     settingsTitle:"Impostazioni", settingsHint:"Restano su questo telefono. Non escono da qui.",
     nameLabel:"Come si chiama", placeLabel:"Dove abita",
     sizeLabel:"Quante persone nel cerchio", condLabel:"Cosa preferisce fare da sé",
@@ -887,6 +914,15 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
     toastPinSaved:"PIN salvato.", toastPinWrong:"PIN errato.",
     toastPinLocked:"Troppi tentativi: riprova tra qualche minuto.",
     toastPinInvalid:"Codice o PIN non validi.",
+    memberLinkBtn:"Link",
+    createInviteLabel:"Prepara il posto di qualcuno",
+    createInviteHint:"Scrivi il nome (per esempio di tuo figlio) e ottieni il suo link personale: chi lo apre è dentro subito, senza dover chiedere il permesso a nessuno. Se un giorno perde l'accesso, basta che tu gli rimandi lo stesso link.",
+    createInvitePh:"Il nome di chi inviti", createInviteBtn:"Crea l'invito",
+    toastInviteCreated:"Invito creato. Adesso mandagli il link.",
+    installTitle:"Tieni l'app a portata di mano",
+    installHint:"Se la aggiungi alla schermata Home, il telefono non si dimentica più del cerchio — e non dovrai rientrare da capo.",
+    installIosHint:"Su iPhone: tocca Condividi in basso, poi \"Aggiungi a Home\".",
+    installBtn:"Aggiungi alla Home",
     removeBtn:"Rimuovi", removeConfirmBtn:"Sicuro?",
     toastMemberRemoved:"Rimosso dal cerchio.",
     editTaskBtn:"Salva modifiche", announceSalvato:"Modifiche salvate.", editTaskAria:"Modifica",
@@ -953,13 +989,13 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
     hintNeedTask:"Scegli cosa serve prima di aggiungere.",
     toastVoceAccorciata:"Voce accorciata: tienile brevi.",
     toastGiaLista:"C'è già nella lista.",
+    sharePersonalMsg: link => `Questo \u00e8 il tuo accesso a il cerchio: aprilo e sei dentro.\n${link}\n(\u00e8 personale, tienilo per te)`,
     toastLinkCopiato:"Link copiato.",
     toastMessaggioCopiato:"Messaggio copiato: incollalo in WhatsApp.",
     toastCopiato:"Copiato.",
     toastCopiaFallita:"Copia non riuscita: seleziona il testo a mano.",
     toastSalvatoOk:"Salvato.",
     toastCoffeeMissing:"Aggiungi il tuo link nel codice (COFFEE_URL) per attivare questo pulsante.",
-    coffeeFabLabel:"Offrimi un caffè",
     announceImpostazioniSalvate:"Impostazioni salvate.",
     announceAggiunto:"Aggiunto alla bacheca."
   }
@@ -985,6 +1021,7 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
     toastAttachError:"Couldn't upload the photo. Try again.",
     toastAttachLimit:"You can attach up to 6 photos per task.",
     settingsLink:"Settings", copyLink:"Copy the link", coffeeBtn:"Buy me a coffee",
+    coffeeFabLabel:"Buy me a coffee",
     settingsTitle:"Settings", settingsHint:"These stay on this phone. They don't leave here.",
     nameLabel:"Her name", placeLabel:"Where she lives",
     sizeLabel:"How many people in the circle", condLabel:"What she prefers to do herself",
@@ -1041,6 +1078,15 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
     toastPinSaved:"PIN saved.", toastPinWrong:"Wrong PIN.",
     toastPinLocked:"Too many attempts: try again in a few minutes.",
     toastPinInvalid:"Invalid code or PIN.",
+    memberLinkBtn:"Link",
+    createInviteLabel:"Set up someone's place",
+    createInviteHint:"Type a name (your child, for instance) and get their personal link: whoever opens it is in straight away, without having to ask anyone. If they ever lose access, just send them the same link again.",
+    createInvitePh:"The name of who you're inviting", createInviteBtn:"Create the invite",
+    toastInviteCreated:"Invite created. Now send them the link.",
+    installTitle:"Keep the app close at hand",
+    installHint:"Add it to your Home Screen and your phone stops forgetting the circle — no more starting over.",
+    installIosHint:"On iPhone: tap Share at the bottom, then \"Add to Home Screen\".",
+    installBtn:"Add to Home Screen",
     removeBtn:"Remove", removeConfirmBtn:"Sure?",
     toastMemberRemoved:"Removed from the circle.",
     editTaskBtn:"Save changes", announceSalvato:"Changes saved.", editTaskAria:"Edit",
@@ -1107,13 +1153,13 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
     hintNeedTask:"Choose what's needed before adding.",
     toastVoceAccorciata:"Item shortened: keep them brief.",
     toastGiaLista:"Already on the list.",
+    sharePersonalMsg: link => `This is your way in to the circle: open it and you're in.\n${link}\n(it's personal, keep it to yourself)`,
     toastLinkCopiato:"Link copied.",
     toastMessaggioCopiato:"Message copied: paste it in WhatsApp.",
     toastCopiato:"Copied.",
     toastCopiaFallita:"Copy failed: select the text by hand.",
     toastSalvatoOk:"Saved.",
     toastCoffeeMissing:"Add your link in the code (COFFEE_URL) to enable this button.",
-    coffeeFabLabel:"Buy me a coffee",
     announceImpostazioniSalvate:"Settings saved.",
     announceAggiunto:"Added to the board."
   }

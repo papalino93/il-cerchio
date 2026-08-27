@@ -27,7 +27,7 @@ function prefix(code) {
 function emptyRoom() {
   return {
     _v: '', setup: { name: '', place: '', size: 0, lang: 'it', taskLabels: {} },
-    tasks: [], members: [], pending: [], pushSubs: {},
+    _seq: 0, tasks: [], members: [], pending: [], pushSubs: {},
     // owner: id del membro che ha creato lo spazio (il "creatore"). Solo lui
     // può togliere altri membri e impostare/cambiare il PIN di recupero
     // sotto — chi si limita a partecipare (es. un figlio) resta un membro
@@ -83,8 +83,19 @@ function sanitizeForClient(room) {
    il nome-versione nella risposta: il client scarta ogni risposta con una
    versione più vecchia di quella che ha già in mano, qualunque sia
    l'ordine con cui le richieste di rete arrivano indietro. */
-function stampNow() {
-  return Date.now().toString().padStart(14, '0') + '-' + Math.random().toString(36).slice(2, 8);
+/* Il nome-versione deve ordinarsi come il tempo: chi legge prende il
+   pathname più alto e lo considera lo stato attuale. Il solo istante non
+   basta — due scritture dentro lo stesso millisecondo finirebbero
+   ordinate dal caso, e la lettura potrebbe restituire la più vecchia (e
+   il client, che confronta gli stessi nomi, se la terrebbe come se fosse
+   la più recente). Dopo l'istante mettiamo quindi un contatore che
+   cresce a ogni scrittura dello spazio, e solo in coda un pezzo casuale:
+   quello serve a non riscrivere mai due volte lo stesso pathname (vedi
+   il commento sulla CDN qui sopra), non a decidere l'ordine. */
+function stampNow(seq) {
+  return Date.now().toString().padStart(14, '0')
+    + '-' + String(seq).padStart(9, '0')
+    + '-' + Math.random().toString(36).slice(2, 8);
 }
 
 async function readRoom(code) {
@@ -112,6 +123,7 @@ async function readRoom(code) {
       const oldest = data.members.slice().sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0))[0];
       data.owner = oldest ? oldest.id : '';
     }
+    data._seq = Number.isFinite(data._seq) ? data._seq : 0;
     data.pinHash = typeof data.pinHash === 'string' ? data.pinHash : '';
     data.pinFails = Number.isFinite(data.pinFails) ? data.pinFails : 0;
     data.pinLockedUntil = Number.isFinite(data.pinLockedUntil) ? data.pinLockedUntil : 0;
@@ -123,7 +135,8 @@ async function readRoom(code) {
 }
 
 async function writeRoom(code, room) {
-  const stamp = stampNow();
+  room._seq = (Number.isFinite(room._seq) ? room._seq : 0) + 1;
+  const stamp = stampNow(room._seq);
   const pathname = `${prefix(code)}${stamp}.json`;
   room._v = stamp;
   await put(pathname, JSON.stringify(room), {
@@ -143,6 +156,13 @@ async function writeRoom(code, room) {
 
 function rid() {
   return 't_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+}
+
+// Stessa forma degli id che il client genera da solo (vedi resolveMemberId
+// in app.js): serve quando è il creatore a preparare il posto di qualcun
+// altro prima ancora che quella persona apra l'app.
+function mid() {
+  return 'm_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 }
 
 const MAX_ATTACHMENTS = 6;
@@ -184,10 +204,15 @@ async function notifyOthers(room, excludeId, body, NOTIFY) {
 // Azioni che richiedono di essere già dentro lo spazio (cerchio/gruppo).
 const MEMBER_ONLY = new Set([
   'saveSetup', 'addTask', 'editTask', 'claim', 'unclaim', 'done', 'reopen', 'remove', 'clearDone',
-  'approve', 'deny', 'savePush', 'removePush', 'removeMember', 'setPin',
+  'approve', 'deny', 'savePush', 'removePush', 'removeMember', 'setPin', 'createInvite',
 ]);
 // "recoverWithPin" apposta NON è qui dentro: chi la usa non è (ancora) un
 // membro riconosciuto su questo dispositivo — è tutto il punto dell'azione.
+
+// Azioni che spettano solo a chi ha creato lo spazio: decidere chi entra e
+// chi esce, e preparare i posti delle persone. Chi si limita a
+// partecipare (es. un figlio) usa la bacheca, ma non muove la porta.
+const OWNER_ONLY = new Set(['approve', 'deny', 'removeMember', 'createInvite', 'setPin']);
 
 const RECURRING = new Set(['ognigiorno', 'ricorrente']);
 
@@ -236,6 +261,10 @@ function createHandler(title) {
       res.status(403).json({ error: 'not_a_member' });
       return;
     }
+    if (OWNER_ONLY.has(action) && room.owner && body.memberId !== room.owner) {
+      res.status(403).json({ error: 'not_owner' });
+      return;
+    }
 
     let notify = null;
 
@@ -278,21 +307,26 @@ function createHandler(title) {
       room.members = room.members.filter(m => m.id !== body.memberId);
       delete room.pushSubs[body.memberId];
     } else if (action === 'removeMember') {
-      // Solo il creatore può togliere qualcun altro dal gruppo — è
+      // Solo il creatore (vedi OWNER_ONLY) può togliere qualcun altro: è
       // un'azione distruttiva, non va lasciata a chiunque sia dentro.
-      if (room.owner && body.memberId !== room.owner) {
-        res.status(403).json({ error: 'not_owner' }); return;
-      }
       const id = String(body.id || '');
       if (id && id !== body.memberId) {
         room.members = room.members.filter(m => m.id !== id);
         delete room.pushSubs[id];
       }
+    } else if (action === 'createInvite') {
+      // Il creatore prepara il posto di una persona (es. un figlio) e le
+      // manda il link personale già pronto: chi lo apre è dentro subito,
+      // senza scrivere il proprio nome e senza aspettare che qualcuno lo
+      // autorizzi. È anche il modo di rimettere dentro qualcuno che ha
+      // perso l'accesso — basta rimandargli lo stesso link, invece di
+      // fargli rifare la richiesta da capo.
+      const name = String(body.name || '').trim().slice(0, 60);
+      if (!name) { res.status(400).json({ error: 'missing_fields' }); return; }
+      if (room.members.length >= MAX_MEMBERS) { res.status(400).json({ error: 'circle_full' }); return; }
+      room.members.push({ id: mid(), name, joinedAt: Date.now() });
     } else if (action === 'setPin') {
-      // Solo il creatore può impostare/cambiare il proprio PIN di recupero.
-      if (room.owner && body.memberId !== room.owner) {
-        res.status(403).json({ error: 'not_owner' }); return;
-      }
+      // Solo il creatore (vedi OWNER_ONLY) imposta il PIN di recupero.
       const pin = String(body.pin || '');
       if (!/^\d{4,8}$/.test(pin)) { res.status(400).json({ error: 'invalid_pin' }); return; }
       room.pinHash = hashPin(pin);
@@ -316,9 +350,19 @@ function createHandler(title) {
         res.status(403).json({ error: 'wrong_pin' }); return;
       }
       room.pinFails = 0; room.pinLockedUntil = 0;
-      const idx = room.members.findIndex(m => m.id === room.owner);
-      if (idx !== -1) room.members[idx] = { ...room.members[idx], id: newId };
-      else room.members.push({ id: newId, name: String(body.name || '').slice(0, 60) || '?', joinedAt: now });
+      // Il telefono nuovo si aggiunge, non prende il posto di quello
+      // vecchio: se il creatore aveva ancora una sessione buona altrove,
+      // quella continua a funzionare invece di ritrovarsi sbattuta fuori
+      // senza spiegazioni. Il ruolo di creatore però passa qui, e il posto
+      // vecchio si può togliere dall'elenco dei membri quando si vuole.
+      const prev = room.members.find(m => m.id === room.owner);
+      if (!room.members.some(m => m.id === newId)) {
+        room.members.push({
+          id: newId,
+          name: (prev && prev.name) || String(body.name || '').slice(0, 60) || '?',
+          joinedAt: now,
+        });
+      }
       room.owner = newId;
     } else if (action === 'savePush') {
       const sub = body.sub;
