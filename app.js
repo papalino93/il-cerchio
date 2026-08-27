@@ -89,19 +89,56 @@ function hasRoomContext(){
 }
 
 // Riconosce sia un link completo (?r=codice, anche dentro testo incollato
-// con altra roba intorno) sia il codice nudo, incollati a mano.
-function extractRoomCode(raw){
+// con altra roba intorno) sia il codice nudo, incollati a mano. Se il testo
+// incollato è il proprio "link personale" (?r=codice&m=iltuoid — quello che
+// "Impostazioni → Il tuo link personale" fa mandare a se stessi apposta per
+// rientrare da un telefono/browser che ha perso i dati locali), viene
+// riconosciuto anche l'id membro: senza questo, incollarlo qui dentro
+// riportava sì nel gruppo giusto ma come persona nuova in attesa di
+// autorizzazione, vanificando l'unico modo per recuperare l'accesso senza
+// chiedere il permesso a qualcun altro.
+function extractInvite(raw){
   const text = String(raw || "").trim();
   if (!text) return null;
+  let code = null, memberId = null;
   try {
     const u = new URL(text);
     const q = u.searchParams.get("r");
-    if (q && /^[a-z0-9]{4,24}$/i.test(q)) return q.toLowerCase();
+    if (q && /^[a-z0-9]{4,24}$/i.test(q)) code = q.toLowerCase();
+    const m = u.searchParams.get("m");
+    if (m && /^m_[a-z0-9]+$/i.test(m)) memberId = m;
   } catch {}
-  if (/^[a-z0-9]{4,24}$/i.test(text)) return text.toLowerCase();
-  const m = text.match(/[?&]r=([a-z0-9]{4,24})/i);
-  return m ? m[1].toLowerCase() : null;
+  if (!code){
+    if (/^[a-z0-9]{4,24}$/i.test(text)) code = text.toLowerCase();
+    else {
+      const m = text.match(/[?&]r=([a-z0-9]{4,24})/i);
+      if (m) code = m[1].toLowerCase();
+    }
+  }
+  if (!memberId){
+    const m = text.match(/[?&]m=(m_[a-z0-9]+)/i);
+    if (m) memberId = m[1];
+  }
+  return code ? { code, memberId } : null;
 }
+
+/* ========================== 3b · BROWSER-IN-APP ========================== */
+/* WhatsApp/Instagram/Facebook/TikTok/... aprono i link condivisi dentro un
+   loro browser incorporato, non nel Safari/Chrome vero del telefono: su
+   molti telefoni (soprattutto Android) quel browser non conserva i dati
+   salvati (localStorage) da un'apertura all'altra. Effetto concreto: si
+   perdono il codice del gruppo e l'id personale, e alla riapertura l'app
+   non riconosce più nessuno spazio esistente — mostrando "crea un nuovo
+   gruppo" anche a chi il gruppo ce l'ha già da settimane. È la causa più
+   probabile di quel problema, quindi lo segnaliamo appena possibile. */
+function isInAppBrowser(){
+  return /FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|WhatsApp|musical_ly|BytedanceWebview|Snapchat/i.test(navigator.userAgent || "");
+}
+function checkInAppBrowser(){
+  if (isInAppBrowser()) el("inapp-warn").hidden = false;
+}
+el("btn-inapp-copy").onclick = () => { buzz(); copy(location.href, TP().toastLinkCopiato); };
+el("btn-inapp-dismiss").onclick = () => { buzz(); el("inapp-warn").hidden = true; };
 
 function enterRoom(){
   ROOM_CODE = resolveRoomCode();
@@ -916,10 +953,11 @@ el("btn-leave-circle").onclick = async () => {
 /* ========================== 9d · INGRESSO ========================== */
 el("btn-landing-create").onclick = () => { buzz(); enterRoom(); };
 el("btn-landing-invite").onclick = () => {
-  const code = extractRoomCode(el("f-landing-invite").value);
-  if (!code){ buzz(); toast(S().toastInviteInvalid); return; }
+  const invite = extractInvite(el("f-landing-invite").value);
+  if (!invite){ buzz(); toast(S().toastInviteInvalid); return; }
   buzz();
-  store.set(KEY_ROOM, code);
+  store.set(KEY_ROOM, invite.code);
+  if (invite.memberId){ store.set(KEY_MEMBER, invite.memberId); myMemberId = invite.memberId; }
   enterRoom();
 };
 el("btn-join").onclick = async () => {
@@ -943,6 +981,7 @@ el("btn-cancel-join").onclick = async () => {
 /* ========================== 10 · AVVIO ========================== */
 applyStaticI18n();
 buildComposer();
+checkInAppBrowser();
 myMemberId = resolveMemberId();
 registerSW();
 if (hasRoomContext()) enterRoom();

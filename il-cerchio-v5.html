@@ -472,6 +472,17 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
       <p id="warn-text"></p>
     </div>
 
+    <!-- Avviso: link aperto dentro un browser incorporato (WhatsApp, Instagram,
+         Facebook, TikTok...). Su molti telefoni quel browser non conserva i
+         dati da un'apertura all'altra: è la causa più comune di "mi chiede
+         sempre di creare un nuovo gruppo". Vedi checkInAppBrowser() in app.js. -->
+    <div class="warn" id="inapp-warn" hidden>
+      <b data-i18n="inAppWarnTitle">Stai usando il browser di un'altra app</b>
+      <p data-i18n="inAppWarnText">Su molti telefoni questo browser non ricorda il tuo gruppo tra un'apertura e l'altra. Apri questo indirizzo in Safari o Chrome per non perdere l'accesso.</p>
+      <button type="button" id="btn-inapp-copy" data-i18n="inAppWarnCopyBtn">Copia il link</button>
+      <button type="button" id="btn-inapp-dismiss" data-i18n="inAppWarnDismissBtn">Ho capito</button>
+    </div>
+
     <!-- ============ PRIMA SCHERMATA: crea o entra con invito ============ -->
     <div class="view" id="v-landing" hidden>
       <div class="block">
@@ -781,6 +792,9 @@ const I18N = {
 it: { code:"it", toggleLabel:"EN", locale:"it-IT",
   ui:{
     warnTitle:"Non riesco a caricare la bacheca",
+    inAppWarnTitle:"Stai usando il browser di un'altra app",
+    inAppWarnText:"Su molti telefoni questo browser non ricorda il tuo gruppo tra un'apertura e l'altra. Apri questo indirizzo in Safari o Chrome per non perdere l'accesso.",
+    inAppWarnCopyBtn:"Copia il link", inAppWarnDismissBtn:"Ho capito",
     step1Eyebrow:"Cosa serve", step1Title:"Scegli il compito",
     step1Hint:"Descrivi cosa va fatto, non chi deve farlo.",
     addItemBtn:"Aggiungi",
@@ -921,6 +935,9 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
 en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
   ui:{
     warnTitle:"Can't load the board",
+    inAppWarnTitle:"You're using another app's browser",
+    inAppWarnText:"On many phones this browser doesn't remember your group between opens. Open this address in Safari or Chrome so you don't lose access.",
+    inAppWarnCopyBtn:"Copy the link", inAppWarnDismissBtn:"Got it",
     step1Eyebrow:"What's needed", step1Title:"Choose the task",
     step1Hint:"Describe what needs doing, not who should do it.",
     addItemBtn:"Add",
