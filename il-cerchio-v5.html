@@ -497,6 +497,15 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
           <input class="input" id="f-landing-invite" autocomplete="off" data-i18n-ph="landingInvitePh">
           <button class="btn quiet" id="btn-landing-invite" type="button" data-i18n="landingInviteBtn">Entra con l'invito</button>
         </div>
+        <!-- Rientro del creatore con PIN: vedi "PIN di recupero" nelle
+             Impostazioni (renderMembers/btn-save-pin in app.js) e l'azione
+             recoverWithPin in api/_engine.js. -->
+        <div class="room-box">
+          <p class="lbl" data-i18n="landingPinLabel">Sei il creatore e hai perso l'accesso?</p>
+          <input class="input" id="f-landing-pin-code" autocomplete="off" maxlength="24" data-i18n-ph="landingPinCodePh">
+          <input class="input" id="f-landing-pin-pin" autocomplete="off" inputmode="numeric" maxlength="8" style="margin-top:8px" data-i18n-ph="landingPinPh">
+          <button class="btn quiet" id="btn-landing-pin" type="button" data-i18n="landingPinBtn">Rientra con il PIN</button>
+        </div>
       </div>
     </div>
 
@@ -676,6 +685,18 @@ h2.sealed{ font-family:var(--serif); font-size:29px; font-weight:600;
           <p class="micro" data-i18n="personalHint"></p>
         </div>
 
+        <!-- Visibile solo al creatore (owner): vedi go("settings") in app.js.
+             Il PIN protegge solo il suo rientro, non serve agli altri membri. -->
+        <div class="room-box" id="pin-box" hidden>
+          <p class="lbl" data-i18n="pinLabel">PIN di recupero</p>
+          <p class="micro" data-i18n="pinHint"></p>
+          <p class="micro" id="pin-status" style="margin-top:4px"></p>
+          <div class="room-box-row" style="margin-top:8px">
+            <input class="input" id="f-pin" autocomplete="off" inputmode="numeric" maxlength="8" data-i18n-ph="pinPh">
+            <button class="pill" id="btn-save-pin" type="button" data-i18n="pinSaveBtn">Salva il PIN</button>
+          </div>
+        </div>
+
         <p class="settings-link"><button id="btn-leave-circle" type="button" data-i18n="leaveBtn">Esci dal cerchio</button></p>
       </div>
 
@@ -841,6 +862,9 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
     landingInvitePh:"Incolla qui il link o il codice",
     landingInviteBtn:"Entra con l'invito",
     toastInviteInvalid:"Non riconosco questo link o codice. Controlla e riprova.",
+    landingPinLabel:"Sei il creatore e hai perso l'accesso?",
+    landingPinCodePh:"Codice del cerchio", landingPinPh:"PIN",
+    landingPinBtn:"Rientra con il PIN",
     joinEyebrow:"Cerchio chiuso", joinTitle:"Come ti chiami?",
     joinHint:"Qualcuno che è già dentro dovrà autorizzarti.",
     joinEyebrowCreate:"Nuovo cerchio",
@@ -855,6 +879,14 @@ it: { code:"it", toggleLabel:"EN", locale:"it-IT",
     personalLabel:"Il tuo link personale",
     personalHint:"Serve solo a te per rientrare da un altro telefono senza bisogno di autorizzazione. Non condividerlo: chi lo ha entra come te.",
     sendToSelfBtn:"Mandalo a te stesso",
+    ownerTag:"creatore",
+    pinLabel:"PIN di recupero",
+    pinHint:"Solo tu (il creatore) lo vedi qui. Ti serve per rientrare nel cerchio da un altro telefono senza bisogno che qualcuno ti autorizzi di nuovo.",
+    pinPh:"Nuovo PIN (4-8 cifre)", pinSaveBtn:"Salva il PIN",
+    pinStatusOn:"PIN attivo.", pinStatusOff:"Nessun PIN impostato ancora.",
+    toastPinSaved:"PIN salvato.", toastPinWrong:"PIN errato.",
+    toastPinLocked:"Troppi tentativi: riprova tra qualche minuto.",
+    toastPinInvalid:"Codice o PIN non validi.",
     removeBtn:"Rimuovi", removeConfirmBtn:"Sicuro?",
     toastMemberRemoved:"Rimosso dal cerchio.",
     editTaskBtn:"Salva modifiche", announceSalvato:"Modifiche salvate.", editTaskAria:"Modifica",
@@ -984,6 +1016,9 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
     landingInvitePh:"Paste the link or the code here",
     landingInviteBtn:"Enter with the invite",
     toastInviteInvalid:"I don't recognize this link or code. Check it and try again.",
+    landingPinLabel:"Are you the creator and lost access?",
+    landingPinCodePh:"Circle code", landingPinPh:"PIN",
+    landingPinBtn:"Get back in with the PIN",
     joinEyebrow:"Closed circle", joinTitle:"What's your name?",
     joinHint:"Someone already inside will need to let you in.",
     joinEyebrowCreate:"New circle",
@@ -998,6 +1033,14 @@ en:{ code:"en", toggleLabel:"IT", locale:"en-GB",
     personalLabel:"Your personal link",
     personalHint:"Only for you, to get back in from another phone without needing approval. Don't share it: whoever has it gets in as you.",
     sendToSelfBtn:"Send it to yourself",
+    ownerTag:"creator",
+    pinLabel:"Recovery PIN",
+    pinHint:"Only you (the creator) see this. It lets you get back into the circle from another phone without needing anyone's approval.",
+    pinPh:"New PIN (4-8 digits)", pinSaveBtn:"Save the PIN",
+    pinStatusOn:"PIN active.", pinStatusOff:"No PIN set yet.",
+    toastPinSaved:"PIN saved.", toastPinWrong:"Wrong PIN.",
+    toastPinLocked:"Too many attempts: try again in a few minutes.",
+    toastPinInvalid:"Invalid code or PIN.",
     removeBtn:"Remove", removeConfirmBtn:"Sure?",
     toastMemberRemoved:"Removed from the circle.",
     editTaskBtn:"Save changes", announceSalvato:"Changes saved.", editTaskAria:"Edit",

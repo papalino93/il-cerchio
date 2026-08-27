@@ -31,7 +31,7 @@ let myName = store.get(KEY_MYNAME, "");
 let myMemberId = "";
 let draft = { task:null, lists:{}, texts:{}, when:null, day:"", words:"", attachments:[] };
 let editingTaskId = null;
-let room = { _v:"", setup:{ name:"", place:"", size:0, lang:LANG }, tasks:[], members:[], pending:[] };
+let room = { _v:"", setup:{ name:"", place:"", size:0, lang:LANG }, tasks:[], members:[], pending:[], owner:"", hasPin:false };
 let ROOM_CODE = "";
 let current = null;
 let pollTimer = null;
@@ -280,7 +280,7 @@ function go(key, announce){
     if (key === "settings"){
       el("room-link-display").textContent = roomUrl();
       el("personal-link-display").textContent = personalUrl();
-      renderMembers(); renderPending(); renderTaskLabelEditor();
+      renderMembers(); renderPending(); renderTaskLabelEditor(); renderPinBox();
     }
   };
   if (current && !reduced()){
@@ -889,16 +889,39 @@ el("btn-save").onclick = async () => {
 };
 
 /* ========================== 9b · MEMBRI ========================== */
+// Solo il creatore (owner) amministra: può togliere altri membri e ha il
+// PIN di recupero (vedi renderPinBox più sotto). Chi si limita a
+// partecipare — es. un figlio invitato — non vede questi controlli.
+function iAmOwner(){ return !!(room.owner && room.owner === myMemberId); }
 function renderMembers(){
   const list = room.members || [];
   el("members-list").innerHTML = list.map(m => {
     const you = m.id === myMemberId;
-    const actions = you ? "" : `<div class="task-row-actions">
+    const owner = !!(room.owner && m.id === room.owner);
+    const tags = [you ? S().youTag : "", owner ? S().ownerTag : ""].filter(Boolean).join(" · ");
+    const actions = (!you && iAmOwner()) ? `<div class="task-row-actions">
         <button class="chip-btn" data-act="removeMember" data-id="${m.id}">${esc(S().removeBtn)}</button>
-      </div>`;
-    return `<div class="task-row"><div class="task-row-body"><b>${esc(m.name)}${you ? ` <span class="task-row-who">(${esc(S().youTag)})</span>` : ""}</b></div>${actions}</div>`;
+      </div>` : "";
+    return `<div class="task-row"><div class="task-row-body"><b>${esc(m.name)}${tags ? ` <span class="task-row-who">(${esc(tags)})</span>` : ""}</b></div>${actions}</div>`;
   }).join("") || `<p class="board-empty">—</p>`;
 }
+function renderPinBox(){
+  const mine = iAmOwner();
+  el("pin-box").hidden = !mine;
+  if (!mine) return;
+  el("pin-status").textContent = room.hasPin ? S().pinStatusOn : S().pinStatusOff;
+  el("f-pin").value = "";
+}
+el("btn-save-pin").onclick = async () => {
+  const pin = el("f-pin").value.trim();
+  if (!/^\d{4,8}$/.test(pin)){ buzz(); toast(S().toastPinInvalid); return; }
+  buzz();
+  try {
+    await withRoom(apiPost({ action:"setPin", pin }));
+    toast(S().toastPinSaved);
+    renderPinBox();
+  } catch (e){ toast(TP().loadError); }
+};
 el("members-list").addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if (!b) return;
   buzz();
@@ -959,6 +982,28 @@ el("btn-landing-invite").onclick = () => {
   store.set(KEY_ROOM, invite.code);
   if (invite.memberId){ store.set(KEY_MEMBER, invite.memberId); myMemberId = invite.memberId; }
   enterRoom();
+};
+// Rientro del creatore (owner) con codice del gruppo + PIN: niente
+// autorizzazione da parte di nessuno, a differenza del campo invito qui
+// sopra. Vedi renderPinBox()/btn-save-pin per come si imposta il PIN, e
+// l'azione "recoverWithPin" in api/_engine.js.
+el("btn-landing-pin").onclick = async () => {
+  const code = el("f-landing-pin-code").value.trim().toLowerCase();
+  const pin = el("f-landing-pin-pin").value.trim();
+  if (!/^[a-z0-9]{4,24}$/i.test(code) || !/^\d{4,8}$/.test(pin)){ buzz(); toast(S().toastPinInvalid); return; }
+  buzz();
+  ROOM_CODE = code;
+  try {
+    await withRoom(apiPost({ action:"recoverWithPin", pin, name:myName }));
+    store.set(KEY_ROOM, ROOM_CODE);
+    applyRoomHeader();
+    startPolling();
+    toast(TP().toastBenvenuto);
+    routeByMembership(TP().toastBenvenuto);
+  } catch (e){
+    buzz();
+    toast(e && e.status === 403 ? S().toastPinWrong : e && e.status === 429 ? S().toastPinLocked : S().toastPinInvalid);
+  }
 };
 el("btn-join").onclick = async () => {
   const name = el("f-joinname").value.trim();
